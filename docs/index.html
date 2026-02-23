@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>POET</title>
+  <title>POET-X</title>
     <style>
         .hidden {
             display: none;
@@ -14,7 +14,7 @@
         content="A Massive Multi-discipline Multimodal Understanding and Reasoning Benchmark for Expert AGI">
   <meta name="keywords" content="POET, Reparameterized LLM Training, Orthogonal Equivalence Transformation">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Reparameterized LLM Training via Orthogonal Equivalence Transformation</title>
+  <title>Memory-efficient LLM Training by Scaling Orthogonal Transformation</title>
 
   <link rel="icon" href="./static/images/poet_icon.png">
 
@@ -56,6 +56,14 @@
   </style>
 
   <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+  <script>
+    window.MathJax = {
+      tex: {
+        inlineMath: [['\\(', '\\)'], ['$', '$']],
+        displayMath: [['\\[', '\\]'], ['$$', '$$']]
+      }
+    };
+  </script>
   <script id="MathJax-script" async
     src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js">
   </script>
@@ -81,17 +89,17 @@
         <div class="column has-text-centered">
           <h1 class="title is-1 publication-title is-bold">
             <img src="static/images/poet_icon.png" style="width:1em;vertical-align: middle" alt="Logo"/> 
-            <span class="mmmu" style="vertical-align: middle">POET</span>
+            <span class="mmmu" style="vertical-align: middle">POET-X</span>
             </h1>
           <h2 class="subtitle is-3 publication-subtitle">
-            Re<strong>p</strong>arameterized LLM Training via <br> <strong>O</strong>rthogonal <strong>E</strong>quivalence <strong>T</strong>ransformation
-          </h2>
-          <div class="is-size-5 publication-authors">
+            Memory-efficient LLM Training by Scaling Orthogonal Transformation
+          <!--
+            <div class="is-size-5 publication-authors">
             <span class="author-block">
               <a href="https://github.com/zqiu24" style="text-decoration: none; color: inherit;">Zeju Qiu<sup style="color:#ed4b82;">1</sup></a>,
             </span>
             <span class="author-block">
-              <a href="https://is.mpg.de/" style="text-decoration: none; color: inherit;">Simon Buchholz<sup style="color:#ed4b82;">1</sup></a>,
+              <a href="https://is.mpg.de/" style="text-decoration: none; color: inherit;">Lixin Liu<sup style="color:#ed4b82;">1</sup></a>,
             </span>
             <span class="author-block">
                 <a href="https://timx.me/" style="text-decoration: none; color: inherit;">Tim Z. Xiao<sup style="color:#ed4b82;">1</sup></a>,
@@ -107,6 +115,7 @@
             </span>
             </div>
             <br>
+          -->
           
           <div class="is-size-5 publication-authors">
             <span class="author-block"><sup style="color:#ed4b82;">1</sup>Max Planck Institute for Intelligent Systems, Tübingen,</span>
@@ -156,8 +165,10 @@
   <section class="hero teaser">
     <div class="container is-max-desktop">
           <div class="content has-text-centered">
-            <img src="static/images/teaser_poet.png" alt="geometric reasoning" width="100%"/>
-            <p> POET's three learning phases. Left: illustration; Middle: angle; Right: loss and validation.</p>
+            <img src="static/images/latency_breakdown.png" alt="geometric reasoning" width="100%"/>
+            <p>Latency breakdown of POET, POET-X, and PyTorch Linear Layers with sequence length 2048 and block size \( b = 256 \).</p>
+            <img src="static/images/mem_breakdown.png" alt="description" width="100%"/>
+            <p>Memory breakdown for training Llama-8B on a single GPU across different methods with batch size 1, sequence lengths 1024 and block size $b = 256$. Since POET runs OOM under this setting, we estimate its memory footprint by profiling memory usage across different numbers of decoder layers (i.e., parameter sizes) and applying scaling.</p>
           </div>
       </div>
     </div>
@@ -168,10 +179,10 @@
     <!-- Abstract. -->
     <div class="columns is-centered has-text-centered">
       <div class="column is-four-fifths">
-        <h2 class="title is-3">POET: A New Training Paradigm for Large Language Models</h2>
+        <h2 class="title is-3">POET-X: A Scalable and Memory-efficient Method for Pretraining Billion-parameter Large Language Models</h2>
         <div class="content has-text-justified">
           <p>
-            While Large language models (LLMs) are driving the rapid advancement of artificial intelligence, effectively and reliably training these large models remains one of the field's most significant challenges. To address this challenge, we propose POET, a novel re<strong>P</strong>arameterized training algorithm that uses <strong>O</strong>rthogonal <strong>E</strong>quivalence <strong>T</strong>ransformation to optimize neurons. Specifically, POET reparameterizes each neuron with two learnable orthogonal matrices and a fixed random weight matrix. Because of its provable preservation of spectral properties of weight matrices, POET can stably optimize the objective function with improved generalization. We further develop efficient approximations that make POET flexible and scalable for training large-scale neural networks. Extensive experiments validate the effectiveness and scalability of POET in training LLMs.
+            Efficient and stable training of large language models (LLMs) remains a core challenge in modern machine learning systems. To address this challenge, Reparameterized Orthogonal Equivalence Training (POET), a spectrum-preserving framework that optimizes each weight matrix through orthogonal equivalence transformation, has been proposed. Although POET provides strong training stability, its original implementation incurs high memory consumption and computational overhead due to intensive matrix multiplications. To overcome these limitations, we introduce POET-X, a scalable and memory-efficient variant that performs orthogonal equivalence transformations with significantly reduced computational cost. POET-X maintains the generalization and stability benefits of POET while achieving substantial improvements in throughput and memory efficiency. In our experiments, POET-X enables the pretraining of billion-parameter LLMs on a single Nvidia H100 GPU, and in contrast, standard optimizers such as AdamW run out of memory under the same settings.
           </p>
         </div>
       </div>
@@ -209,26 +220,10 @@
             <h2 class="title is-3">Spectrum-Preserving Weight Update</h2>
             <div class="content has-text-justified">
               <p>
-                To achieve effective weight spectrum control without the limitations above, we propose POET, a re<u>P</u>arameterized training algorithm that uses <u>O</u>rthogonal <u>E</u>quivalence <u>T</u>ransformation to indirectly learn weight matrices. Specifically, POET reparameterizes a weight matrix 
-                \( \mathbf{W} \in \mathbb{R}^{m \times n} \) 
-                with 
-                \( \mathbf{R} \mathbf{W}_0 \mathbf{P} \)
-                where 
-                \( \mathbf{W}_0 \in \mathbb{R}^{m \times n} \) 
-                is a randomly initialized weight matrix, 
-                \( \mathbf{R} \in \mathbb{R}^{m \times m} \) 
-                and 
-                \( \mathbf{P} \in \mathbb{R}^{n \times n} \) 
-                are two orthogonal matrices. Instead of optimizing weight matrices directly, POET keeps the randomly initialized weight matrix 
-                \( \mathbf{W}_0 \) 
-                unchanged during training and learns two orthogonal matrices 
-                \( \mathbf{R}, \mathbf{P} \) 
-                to transform 
-                \( \mathbf{W}_0 \).
-                This reparameterization preserves the singular values of weights while allowing flexible optimization of the singular vectors.
+                Fully-stochastic POET (with \( b=1/8 \) ) vs. block-stochastic POET (with $b=8$) for the weight matrix update coverage. In the toy experiment, we use a $64\times64$ weight matrix and run both POET variants for 100-step update, so 200 are the largest possible update steps (multiplication by $\bm{R}$ and $\bm{P}$ counts as two updates). Block-stochastic POET ensures balanced update for the weight matrix while fully-stochastic POET does not. We build POET-X on top of block-stochastic POET due to its uniform coverage of all dimensions of the weight matrix. This property is important for memory-efficiency, because it ensures the balanced weight update even with a very small number of parameters unlike the fully-stochastic POET.
               </p>
               <div class="content has-text-centered">
-                <img src="static/images/sv_comp.png" alt="algebraic reasoning" class="center" style="width: 90%; height: auto;">
+                <img src="static/images/coverage.png" alt="algebraic reasoning" class="center" style="width: 90%; height: auto;">
                 <p> Training dynamics of singular values of the same weight matrix in a LLaMA model using standard training (AdamW) and POET.</p>
               </div>
 
@@ -289,90 +284,11 @@
             <p>
               We perform the pretraining experiments on the Llama transformers of varying sizes (60M, 130M, 350M, 1.3B) for POET. We use the C4 dataset, a cleaned web crawl corpus from Common Crawl, widely used for LLM pretraining. The training results are summarized below, the validation perplexity and the trainable parameters are reported.
             </p>
-            <div class="table-container">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Model (# tokens)</th>
-                    <th>60M (30B)</th>
-                    <th>130M (40B)</th>
-                    <th>350M (40B)</th>
-                    <th>1.3B (50B)</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr>
-                    <td>AdamW</td>
-                    <td>26.68 (25.30M)</td>
-                    <td>20.82 (84.93M)</td>
-                    <td>16.78 (302.38M)</td>
-                    <td>14.73 (1.21B)</td>
-                  </tr>
-                  <tr>
-                    <td>Galore</td>
-                    <td>29.81 (25.30M)</td>
-                    <td>22.35 (84.93M)</td>
-                    <td>17.99 (302.38M)</td>
-                    <td>18.33 (1.21B)</td>
-                  </tr>
-                  <tr>
-                    <td>LoRA<sub>r=64</sub></td>
-                    <td>39.70 (4.85M)</td>
-                    <td>32.07 (11.21M)</td>
-                    <td>25.19 (30.28M)</td>
-                    <td>20.55 (59.38M)</td>
-                  </tr>
-                  <tr style="background-color: #f5f7fa;">
-                    <td>POET<sub>BS, b=64</sub></td>
-                    <td>29.52 (2.39M)</td>
-                    <td>24.52 (5.52M)</td>
-                    <td>20.29 (14.90M)</td>
-                    <td>18.28 (29.22M)</td>
-                  </tr>
-                  <tr style="background-color: #f5f7fa;">
-                    <td>POET<sub>BS, b=128</sub></td>
-                    <td>26.90 (4.81M)</td>
-                    <td>21.86 (11.12M)</td>
-                    <td>18.05 (30.04M)</td>
-                    <td>16.24 (58.91M)</td>
-                  </tr>
-                  <tr style="background-color: #f5f7fa;">
-                    <td>POET<sub>BS, b=256</sub></td>
-                    <td><b>25.29</b> (9.66M)</td>
-                    <td><b>19.88</b> (22.33M)</td>
-                    <td>16.27 (60.32M)</td>
-                    <td>14.56 (118.26M)</td>
-                  </tr>
-                  <tr style="background-color: #f5f7fa;">
-                    <td>POET<sub>FS, b=1/8</sub></td>
-                    <td>34.06 (0.53M)</td>
-                    <td>29.67 (1.78M)</td>
-                    <td>24.61 (6.34M)</td>
-                    <td>18.46 (25.39M)</td>
-                  </tr>
-                  <tr style="background-color: #f5f7fa;">
-                    <td>POET<sub>FS, b=1/4</sub></td>
-                    <td>28.69 (2.13M)</td>
-                    <td>23.55 (7.13M)</td>
-                    <td>19.42 (25.44M)</td>
-                    <td>17.60 (101.66M)</td>
-                  </tr>
-                  <tr style="background-color: #f5f7fa;">
-                    <td>POET<sub>FS, b=1/2</sub></td>
-                    <td>25.37 (8.54M)</td>
-                    <td>19.94 (28.56M)</td>
-                    <td><b>15.95</b> (101.86M)</td>
-                    <td><b>13.70</b> (406.88M)</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div> 
-            <img src="static/images/val_ppl.png" alt="algebraic reasoning" class="center" style="width: 90%; height: auto;">
+            <img src="static/images/peak_mem.png" alt="algebraic reasoning" class="center" style="width: 90%; height: auto;">
             <br>
           </div>
         </div>
       </div>
-
 
       <div class="columns is-centered has-text-centered">
         <div class="column is-four-fifths">
@@ -381,7 +297,19 @@
             <p>
               To highlight POET's non-trivial performance improvement, we increase the training steps (i.e., effectively tokens seen) for AdamW, and find that POET-FS (\( b = 1/2 \)) still outperforms AdamW even if AdamW is trained with almost triple the number of tokens.
             </p>
-            <img src="static/images/ablation_training_speedup.png" alt="algebraic reasoning" class="center" style="width: 60%; height: auto;">
+            <img src="static/images/ppl_results.png" alt="algebraic reasoning" class="center" style="width: 100%; height: auto;">
+          </div>
+        </div>
+      </div>
+
+      <div class="columns is-centered has-text-centered">
+        <div class="column is-four-fifths">
+          <h2 class="title is-3">Training Speedup</h2>
+          <div class="content has-text-justified">
+            <p>
+              To highlight POET's non-trivial performance improvement, we increase the training steps (i.e., effectively tokens seen) for AdamW, and find that POET-FS (\( b = 1/2 \)) still outperforms AdamW even if AdamW is trained with almost triple the number of tokens.
+            </p>
+            <img src="static/images/ppl_results_q.png" alt="algebraic reasoning" class="center" style="width: 100%; height: auto;">
           </div>
         </div>
       </div>
@@ -438,7 +366,8 @@
 <!-- BUILDING SECTION -->
 <section class="hero is-light is-small">
   <div class="hero-body has-text-centered">
-    <h1 class="title is-1 mmmu">Training with POET</h1>
+    <h1 class="title is-1 mmmu">POET-X: Fast, Memory-efficient Training
+      by Scaling Orthogonal Transformation</h1>
   </div>
 </section>
 
@@ -679,14 +608,14 @@
 
         <div class="columns is-centered has-text-centered">
           <div class="column is-four-fifths">
-            <h2 class="title is-3">Performance under a constant parameter budget</h2>
+            <h2 class="title is-3">Efficient Cayley-Neumann Parameterization</h2>
             <div class="content has-text-justified">
               <p>
-                Since POET optimizes two orthogonal matrices \( \mathbf{R}, \mathbf{P} \) simultaneously, a natural question arises: <em>which matrix should receive more parameter budget under a fixed total constraint?</em> To investigate this, we conduct a controlled experiment where different ratios of trainable parameters are allocated to \( \mathbf{R} \) and \( \mathbf{P} \) under a fixed total budget. All other settings (e.g., architecture, data) remain unchanged, with full details provided in the Appendix. We use validation perplexity as the evaluation metric. The total parameter budget matches that of fully stochastic POET with \( b = \frac{1}{h}m \) for \( \mathbf{R} \) and \( b = \frac{1}{h}n \) for \( \mathbf{P} \), where \( h = 8 \), \( 4 \), and \( 3 \) correspond to small, medium, and large budgets, respectively. The results show that POET with a balanced allocation between \( \mathbf{R} \) and \( \mathbf{P} \) yields the best performance.
+                The POET framework orthogonalizes matrices via two operations: <strong>skew_symmetric</strong> and <strong>cayley_neumann</strong>. The first constructs a skew-symmetric matrix \( \mathbf{Q} = -\mathbf{Q}^\top \in \mathbb{R}^{b \times b} \). The second transforms \( \mathbf{Q} \) into an approximately orthogonal matrix using the Cayley–Neumann polynomial (CNP). Empirical results suggest that a CNP of degree \( k = 3 \) offers an optimal balance between accuracy and efficiency, yielding the orthogonal matrix approximation \( \mathbf{G} \):
               </p>
               <div class="content has-text-centered">
-                <img src="static/images/budget.png" alt="algebraic reasoning" class="center" style="width: 50%; height: auto;">
-                <p> Performance of POET under a constant total parameter budget on \( \mathbf{R} \) and \( \mathbf{P} \). </p>
+                <img src="static/images/cayley.png" alt="algebraic reasoning" class="center" style="width: 50%; height: auto;">
+                <p>Illustration of efficient Cayley-Neumann parameterization (batch-wise implementation). </p>
               </div> 
             </div>
           </div>
