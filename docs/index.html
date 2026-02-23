@@ -162,24 +162,14 @@
     width: 80%;
   }
   </style>
-  <section class="hero teaser">
-    <div class="container is-max-desktop">
-          <div class="content has-text-centered">
-            <img src="static/images/latency_breakdown.png" alt="geometric reasoning" width="100%"/>
-            <p>Latency breakdown of POET, POET-X, and PyTorch Linear Layers with sequence length 2048 and block size \( b = 256 \).</p>
-            <img src="static/images/mem_breakdown.png" alt="description" width="100%"/>
-            <p>Memory breakdown for training Llama-8B on a single GPU across different methods with batch size 1, sequence lengths 1024 and block size $b = 256$. Since POET runs OOM under this setting, we estimate its memory footprint by profiling memory usage across different numbers of decoder layers (i.e., parameter sizes) and applying scaling.</p>
-          </div>
-      </div>
-    </div>
-  </section>
+
 
 <section class="section">
   <div class="container is-max-desktop">
     <!-- Abstract. -->
     <div class="columns is-centered has-text-centered">
       <div class="column is-four-fifths">
-        <h2 class="title is-3">POET-X: A Scalable and Memory-efficient Method for Pretraining Billion-parameter Large Language Models</h2>
+        <h2 class="title is-3">POET-X: A Scalable and Memory-efficient Method for Pretraining Billion-parameter LLMs</h2>
         <div class="content has-text-justified">
           <p>
             Efficient and stable training of large language models (LLMs) remains a core challenge in modern machine learning systems. To address this challenge, Reparameterized Orthogonal Equivalence Training (POET), a spectrum-preserving framework that optimizes each weight matrix through orthogonal equivalence transformation, has been proposed. Although POET provides strong training stability, its original implementation incurs high memory consumption and computational overhead due to intensive matrix multiplications. To overcome these limitations, we introduce POET-X, a scalable and memory-efficient variant that performs orthogonal equivalence transformations with significantly reduced computational cost. POET-X maintains the generalization and stability benefits of POET while achieving substantial improvements in throughput and memory efficiency. In our experiments, POET-X enables the pretraining of billion-parameter LLMs on a single Nvidia H100 GPU, and in contrast, standard optimizers such as AdamW run out of memory under the same settings.
@@ -188,86 +178,49 @@
       </div>
     </div>
     <!--/ Abstract. -->
-</div>
-<br>
-<br>
+  </div>
+</section>
 
-<!-- BUILDING SECTION -->
-<section class="hero is-light is-small">
-  <div class="hero-body has-text-centered">
-    <h1 class="title is-1 mmmu">Spectral Property of Weight Matrices</h1>
+<section class="hero teaser">
+  <div class="container is-max-desktop">
+    <div class="content has-text-centered">
+      <img src="static/images/latency_breakdown.png" alt="geometric reasoning" width="70%"/>
+      <p>Latency breakdown of POET, POET-X, and PyTorch Linear Layers with sequence length 2048 and block size \( b = 256 \).</p>
+      <img src="static/images/mem_breakdown.png" alt="description" width="70%"/>
+      <p>Memory breakdown for training Llama-8B on a single GPU across different methods with batch size 1, sequence lengths 1024 and block size $b = 256$. Since POET runs OOM under this setting, we estimate its memory footprint by profiling memory usage across different numbers of decoder layers (i.e., parameter sizes) and applying scaling.</p>
+    </div>
   </div>
 </section>
 
 <section class="section">
-  <div class="container">
-    <!-------------------------------------------------------------------- RESULTS SECTION -------------------------------------------------------------------->
-    <section class="section">
-      <div class="container">
-        <div class="columns is-centered has-text-centered">
-          <div class="column is-four-fifths">
-            <h2 class="title is-3">Spectral Properties and Generalization</h2>
-            <div class="content has-text-justified">
-              <p>
-                The <i>de facto</i> way for training LLMs is to directly optimize weight matrices with the Adam optimizer. While conceptually simple, this direct optimization can be computationally intensive (due to the poor scaling with model size) and requires careful hyperparameter tuning to ensure stable convergence. More importantly, its generalization can remain suboptimal even if the training loss is perfectly minimized. To stabilize training and enhance generalization, various weight regularization methods and weight normalization techniques have been proposed. Most of these methods boil down to improving spectral properties of weight matrices (<i>i.e.</i>, singular values) either explicitly or implicitly. Intuitively, the spectral norm of a weight matrix (<i>i.e.</i>, the largest singular value) provides an upper bound on how much a matrix can amplify the input vectors, which connects to the generalization properties. In general, smaller spectral norms (<i>i.e.</i>, better smoothness) are considered to be associated with stronger generalization, which inspires explicit spectrum control. Theoretical results also suggest that weight matrices with bounded spectrum can provably guarantee generalization.
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <div class="columns is-centered has-text-centered">
-          <div class="column is-four-fifths">
-            <h2 class="title is-3">Spectrum-Preserving Weight Update</h2>
-            <div class="content has-text-justified">
-              <p>
-                Fully-stochastic POET (with \( b=1/8 \) ) vs. block-stochastic POET (with $b=8$) for the weight matrix update coverage. In the toy experiment, we use a $64\times64$ weight matrix and run both POET variants for 100-step update, so 200 are the largest possible update steps (multiplication by $\bm{R}$ and $\bm{P}$ counts as two updates). Block-stochastic POET ensures balanced update for the weight matrix while fully-stochastic POET does not. We build POET-X on top of block-stochastic POET due to its uniform coverage of all dimensions of the weight matrix. This property is important for memory-efficiency, because it ensures the balanced weight update even with a very small number of parameters unlike the fully-stochastic POET.
-              </p>
-              <div class="content has-text-centered">
-                <img src="static/images/coverage.png" alt="algebraic reasoning" class="center" style="width: 90%; height: auto;">
-                <p> Training dynamics of singular values of the same weight matrix in a LLaMA model using standard training (AdamW) and POET.</p>
-              </div>
-
-            </div>
-          </div>
-        </div>
-
-        <div class="columns is-centered has-text-centered">
-          <div class="column is-four-fifths">
-            <h2 class="title is-3">Dynamics of Singular Spectrum</h2>
-            <div class="content has-text-justified">
-              <p>
-                Inspired by Muon [4], we conduct a spectral analysis by comparing the singular spectrum among AdamW, Muon and POET.
-                We compute SVD entropy of the trained Llama-60M model at different iterations. The SVD entropy, defined as 
-                \( H(\boldsymbol{\sigma}) = \frac{1}{\log n} \sum_i \frac{\sigma_i^2}{\sum_j \sigma_j^2} \log \frac{\sigma_i^2}{\sum_j \sigma_j^2} \),
-                measures the diversity of singular values; higher entropy indicates a more uniform and diverse spectrum. As shown in Figure&nbsp;4, POET consistently maintains high spectral diversity throughout training, owing to its orthogonal equivalence transformation. Consistent with <a href="#references">[4]</a>, Muon also yields more diverse spectral updates than AdamW.
-              </p>
-              <div class="content has-text-centered">
-                <img src="static/images/svd_entropy.png" alt="algebraic reasoning" class="center" style="width: 100%; height: auto;">
-                <p> Dynamics comparison of average singular value entropy (singular value diversity) between direct training (AdamW, Muon) and POET.</p>
-              </div>
-              <p>
-                Our proposed POET has two key properties:
-                <ul>
-                  <li>
-                    <strong>Strong spectrum control:</strong> Because orthogonal transformations do not change the singular values of weight matrices, POET keeps the weight spectrum the same as the randomly initialized weight matrices (empirically validated even with approximations). Through the initialization scheme, POET thus directly controls the singular value distribution of its weight matrices. As a result, and in contrast to standard LLM training, POET matrices avoid undesirable large singular values after training. To further facilitate the POET algorithm, we introduce two new initialization schemes: <strong>normalized Gaussian initialization</strong> and <strong>uniform spectrum initialization</strong>, which can ensure the resulting weight matrices have bounded singular values.
-                  </li>
-                  <li>
-                    <strong>Efficient approximation:</strong> While a naive implementation of POET can be computationally expensive, its inherent flexibility opens up opportunities for efficient and scalable training. To address the key challenge of optimizing large orthogonal matrices, we introduce two levels of approximations: <em>stochastic primitive optimization</em>, which factorizes a large orthogonal matrix \( \mathbf{R} \in \mathbb{R}^{m \times m} \) into a product of primitive orthogonal matrices with fewer trainable parameters and uses a merge-then-reinitialize trick for efficiency, and <em>approximate orthogonality via Cayley-Neumann parameterization</em>, which maintains orthogonality with low computational overhead by approximating the Cayley orthogonal parameterization with Neumann series and also benefits from the merge-then-reinitialize trick to prevent error accumulation.
-                  </li>
-                </ul>
-              </p>
-            </div>
-          </div>
+  <div class="container is-max-desktop">
+    <div class="columns is-centered has-text-centered">
+      <div class="column is-four-fifths">
+        <h2 class="title is-3">Single-layer Benchmarking against POET</h2>
+        <div class="content has-text-justified">
+          <p>
+            The original POET struggles to scale beyond 3B parameters due to prohibitive memory and compute requirements. We quantitatively evaluate POET-X against POET and standard linear layers using Llama-8B settings to demonstrate its scalability.
+          </p>
+    
+          <h4>1. Latency and Compute Efficiency</h4>
+          <p>
+            Compared to POET, the combined forward and backward pass latency drops from <strong>10.59ms</strong> to <strong>1.38ms</strong> for <code>POET-X<sub>fast</sub></code> and <strong>1.89ms</strong> for <code>POET-X<sub>mem</sub></code>. Relative to a highly optimized PyTorch linear layer (cuBLAS), POET-X incurs only modest overhead. Notably, <code>POET-X<sub>fast</sub></code> achieves backward-pass latency comparable to standard linear layers due to its high parameter efficiency.
+          </p>
+    
+          <h4>2. Memory Footprint and Scalability</h4>
+          <p>
+            We profiled memory consumption for training a Llama-8B model on a single GPU. While POET was intended to exhibit PEFT-like memory reduction, its original formulation is actually more memory-intensive than AdamW because it requires storing large transformed weight matrices (\(\mathbf{W}_{RP}\)) for backpropagation. In contrast, <strong>\(\text{POET-X}_{\text{fast}}\)</strong> and <strong>\(\text{POET-X}_{\text{mem}}\)</strong> both exhibit the reduced memory footprint characteristic of PEFT methods. By drastically lowering memory requirements for activations, gradients, and optimizer states, POET-X significantly enhances the scalability of orthogonal reparameterization for large-scale transformer pretraining.
+          </p>
         </div>
       </div>
-    </section>
     </div>
-  </section>
+  </div>
+</section>
 
 <!-- BUILDING SECTION -->
 <section class="hero is-light is-small">
   <div class="hero-body has-text-centered">
-    <h1 class="title is-1 mmmu">Beyond AdamW: Fewer Parameters, Lower Perplexity</h1>
+    <h1 class="title is-1 mmmu">Performance Comparison</h1>
   </div>
 </section>
 
@@ -279,12 +232,47 @@
     <div class="container">
       <div class="columns is-centered has-text-centered">
         <div class="column is-four-fifths">
-          <h2 class="title is-3">LLM Pretraining using LLaMA Transformer Architecture</h2>
+          <h2 class="title is-3">Multi-node Pretraining using LLaMA Transformer Architecture</h2>
           <div class="content has-text-justified">
             <p>
-              We perform the pretraining experiments on the Llama transformers of varying sizes (60M, 130M, 350M, 1.3B) for POET. We use the C4 dataset, a cleaned web crawl corpus from Common Crawl, widely used for LLM pretraining. The training results are summarized below, the validation perplexity and the trainable parameters are reported.
+              We evaluated <strong>POET-X</strong> by pretraining a Llama-3B transformer on 60B tokens from the C4 dataset, following the Chinchilla scaling law of ~20 tokens per parameter. We benchmarked POET-X against <strong>AdamW</strong>, <strong>Muon</strong> (gradient orthogonalization), and memory-efficient baselines <strong>GaLore</strong> and <strong>APOLLO</strong>.
             </p>
-            <img src="static/images/peak_mem.png" alt="algebraic reasoning" class="center" style="width: 90%; height: auto;">
+            <h4>Key Experimental Findings</h4>
+            <ul>
+              <li>
+                <strong>Superior Performance:</strong> POET-X achieved better validation perplexity (PPL) than AdamW and all other memory-efficient methods.
+              </li>
+              <li>
+                <strong>Efficiency Trade-off:</strong> While slightly underperforming Muon in PPL, POET-X required significantly lower GPU memory.
+              </li>
+              <li>
+                <strong>Block Size Impact:</strong> \(\text{POET-X}_{b=512}\) yielded a highly competitive validation perplexity of <strong>12.05</strong>, the second-best result across all tested methods.
+              </li>
+            </ul>
+            <p>
+              These results demonstrate that POET-X provides an optimal balance, delivering state-of-the-art training efficiency with a much smaller memory footprint than traditional second-order or orthogonal optimizers.
+            </p>
+            <img src="static/images/ppl_results.png" alt="algebraic reasoning" class="center" style="width: 80%; height: auto;">
+            <br>
+            <p>
+              A primary advantage of <strong>POET-X</strong> is its seamless application to quantized base models. We evaluated <strong>POET-XQ</strong> by pretraining Llama-3B on 10B tokens, comparing it against GaLore and APOLLO.
+            </p>
+            <h4>Key Results</h4>
+            <ul>
+              <li>
+                <strong>Superior Performance:</strong> <code>POET-XQ<sub>b=512</sub></code> achieved the best validation perplexity of <strong>14.78</strong>, outperforming both GaLore and APOLLO baselines.
+              </li>
+              <li>
+                <strong>Minimal Memory:</strong> <code>POET-XQ<sub>b=256</sub></code> required the <strong>lowest overall training memory</strong> across all tested configurations.
+              </li>
+              <li>
+                <strong>High Throughput:</strong> POET-XQ demonstrated superior computational efficiency by avoiding direct optimization of low-precision weights, leading to higher training throughput.
+              </li>
+            </ul>
+            <p>
+              By decoupling reparameterization from the quantized base weights, POET-XQ maintains compatibility with standard optimizers and can be effortlessly integrated into any quantized model architecture.
+            </p>
+            <img src="static/images/ppl_results_q.png" alt="algebraic reasoning" class="center" style="width: 80%; height: auto;">
             <br>
           </div>
         </div>
@@ -295,64 +283,23 @@
           <h2 class="title is-3">Training Speedup</h2>
           <div class="content has-text-justified">
             <p>
-              To highlight POET's non-trivial performance improvement, we increase the training steps (i.e., effectively tokens seen) for AdamW, and find that POET-FS (\( b = 1/2 \)) still outperforms AdamW even if AdamW is trained with almost triple the number of tokens.
+              Beyond iteration-wise convergence, we evaluated <strong>wall-clock efficiency</strong> in a distributed environment (32&times; Nvidia H100 GPUs across 4 nodes via InfiniBand).
             </p>
-            <img src="static/images/ppl_results.png" alt="algebraic reasoning" class="center" style="width: 100%; height: auto;">
-          </div>
-        </div>
-      </div>
-
-      <div class="columns is-centered has-text-centered">
-        <div class="column is-four-fifths">
-          <h2 class="title is-3">Training Speedup</h2>
-          <div class="content has-text-justified">
+            <h4>Distributed Scaling Advantages</h4>
+            <ul>
+              <li>
+                <strong>Superior Throughput:</strong> POET-X's extreme memory efficiency allows the use of <strong>Distributed Data Parallel (DDP)</strong>. Since the model, gradients, and optimizer states fit entirely on a single GPU, only data is sharded, resulting in higher throughput and stronger scalability.
+              </li>
+              <li>
+                <strong>Communication Overhead:</strong> In contrast, training <strong>AdamW</strong> in the same setting triggers Out-of-Memory (OOM) errors with DDP. It necessitates <strong>Fully Sharded Data Parallel (FSDP)</strong>, which introduces significant collective communication overhead due to sharding parameters and optimizer states across GPUs.
+              </li>
+            </ul>
             <p>
-              To highlight POET's non-trivial performance improvement, we increase the training steps (i.e., effectively tokens seen) for AdamW, and find that POET-FS (\( b = 1/2 \)) still outperforms AdamW even if AdamW is trained with almost triple the number of tokens.
+              By enabling DDP where standard optimizers require FSDP, POET-X achieves significantly better practical wall-clock efficiency and robustness in large-scale distributed pretraining.
             </p>
-            <img src="static/images/ppl_results_q.png" alt="algebraic reasoning" class="center" style="width: 100%; height: auto;">
-          </div>
-        </div>
-      </div>
-
-      <div class="columns is-centered has-text-centered">
-        <div class="column is-four-fifths">
-          <h2 class="title is-3">Parameter and Memory Complexity</h2>
-          <div class="content has-text-justified">
-            <p>
-              By introducing a hyperparameter \( b \) as the sampling budget, fully stochastic SPO decouples parameter complexity from the size of the weight matrices. With a small \( b \), POET becomes highly parameter-efficient, though at the cost of slower convergence. This offers users a flexible trade-off between efficiency and speed. In contrast, block-stochastic SPO has parameter complexity dependent on the matrix size (i.e., \( m + n \)), making it more scalable than AdamW, which requires \( mn \) trainable parameters. In terms of memory complexity, both POET variants can be much more efficient than AdamW with a suitable sampling budget \( b \). A comparison of parameter and memory complexity is given below:
-            </p>
-            <div style="text-align: center;">
-              <table style="width: auto; border-collapse: collapse; margin: 1em auto;">
-                <thead>
-                  <tr>
-                    <th style="padding: 8px; border-bottom: 2px solid #ddd; text-align: left;"><strong>Method</strong></th>
-                    <th style="padding: 8px; border-bottom: 2px solid #ddd; text-align: center;"># <strong>trainable params</strong></th>
-                    <th style="padding: 8px; border-bottom: 2px solid #ddd; text-align: center;"><strong>Memory cost</strong></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr>
-                    <td style="padding: 8px;">AdamW</td>
-                    <td style="padding: 8px; text-align: center;">\( mn \)</td>
-                    <td style="padding: 8px; text-align: center;">\( 3mn \)</td>
-                  </tr>
-                  <tr>
-                    <td style="padding: 8px;">GaLore</td>
-                    <td style="padding: 8px; text-align: center;">\( mn \)</td>
-                    <td style="padding: 8px; text-align: center;">\( mn + mr + 2nr \)</td>
-                  </tr>
-                  <tr style="background-color: #f5f7fa;">
-                    <td style="padding: 8px;">POET (FS)</td>
-                    <td style="padding: 8px; text-align: center;">\( b(b-1) \)</td>
-                    <td style="padding: 8px; text-align: center;">\( mn + 3b(b-1) \)</td>
-                  </tr>
-                  <tr style="background-color: #f5f7fa;">
-                    <td style="padding: 8px;">POET (BS)</td>
-                    <td style="padding: 8px; text-align: center;">\( \frac{1}{2}(m+n)(b-1) \)</td>
-                    <td style="padding: 8px; text-align: center;">\( mn + \frac{3}{2}(m+n)(b-1) \)</td>
-                  </tr>
-                </tbody>
-              </table>
+            <div style="display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;">
+              <img src="static/images/val_ppl_256.png" alt="..." style="max-width: 48%; height: auto;">
+              <img src="static/images/val_ppl_1024.png" alt="..." style="max-width: 48%; height: auto;">
             </div>
           </div>
         </div>
@@ -362,6 +309,97 @@
   </div>
 </section>
 
+
+
+<!-- BUILDING SECTION -->
+<section class="hero is-light is-small">
+  <div class="hero-body has-text-centered">
+    <h1 class="title is-1 mmmu">In-depth Efficiency Study</h1>
+  </div>
+</section>
+
+
+<section class="section">
+<div class="container">
+  <!-------------------------------------------------------------------- RESULTS SECTION -------------------------------------------------------------------->
+  <section class="section">
+    <div class="container">
+      <div class="columns is-centered has-text-centered">
+        <div class="column is-four-fifths">
+          <h2 class="title is-3">Memory Efficiency</h2>
+          <div class="content has-text-justified">
+            <p>
+              We systematically benchmarked peak GPU memory on a single <strong>Nvidia H100</strong>, varying model size (3B to 13B), sequence length (512 to 2048), and block size \(b\). We compared POET-X against AdamW, Muon, GaLore, APOLLO, and a parameter-matched LoRA baseline across both <strong>BF16</strong> and <strong>INT8 quantized</strong> settings.
+            </p>
+            <h4>Key Scalability Findings</h4>
+            <ul>
+              <li>
+                <strong>Prohibitive Baseline:</strong> The original POET formulation is highly memory-intensive, failing to fit 8B and 13B models even at the shortest sequence lengths.
+              </li>
+              <li>
+                <strong>State-of-the-Art Efficiency:</strong> <code>POET-X<sub>fast</sub></code> matches the memory footprint of LoRA, while <code>POET-X<sub>mem</sub></code> outperforms <strong>all</strong> baselines (including LoRA) across every scale and configuration.
+              </li>
+              <li>
+                <strong>Scaling Advantage:</strong> POET-X's memory benefits become most pronounced at scale. For the <strong>13B model</strong> with a <strong>2048 sequence length</strong>, POET-X maintains a stable footprint where other methods encounter significant overhead.
+              </li>
+            </ul>
+            <p>
+              These results confirm that POET-X is the most memory-efficient framework for large-scale orthogonal reparameterization, effectively enabling the pretraining of 13B+ parameter models on single-node hardware.
+            </p>
+            <div class="content has-text-centered">
+              <img src="static/images/peak_mem.png" alt="algebraic reasoning" class="center" style="width: 100%; height: auto;">
+              <p>
+                The following table benchmarks the peak GPU memory usage on a single <strong>Nvidia H100</strong> (Batch Size 1, no gradient accumulation). This comparison highlights the memory stability of <strong>POET-X</strong> as model size and sequence length increase.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="columns is-centered has-text-centered">
+        <div class="column is-four-fifths">
+          <h2 class="title is-3">Throughput Efficiency</h2>
+          <div class="content has-text-justified">
+            <p>
+              We evaluated throughput scalability by varying model size, sequence length, and node count (scaling from 1 to 64 GPUs). For distributed training, <strong>POET-X</strong> and LoRA utilize <strong>Distributed Data Parallel (DDP)</strong>, while AdamW employs a hybrid <strong>FSDP strategy</strong>.
+            </p>
+            <h4>1. Single-GPU Throughput</h4>
+            <p>
+              While AdamW shows competitive performance on smaller configurations (Llama-8B at 512/1024 lengths), it encounters <strong>Out-of-Memory (OOM)</strong> errors as sequence length or model size increases. POET-X maintains stable execution across all tested scales.
+            </p>
+      
+            <h4>2. Distributed Node Scaling</h4>
+            <p>
+              As shown in our 64-GPU benchmarks, AdamW’s performance deviates from ideal linear scaling as node counts increase. This bottleneck is driven by:
+            </p>
+            <ul>
+              <li><strong>Network Congestion:</strong> AdamW requires a full-gradient <code>all-reduce</code> across all nodes at every step.</li>
+              <li><strong>Communication Overhead:</strong> FSDP’s intra-node <code>all-gather</code> and <code>reduce-scatter</code> operations further degrade throughput.</li>
+            </ul>
+            <p>
+              In contrast, <strong>POET-X</strong> closely follows the ideal scaling curve. By drastically reducing the number of trainable parameters, it minimizes communication overhead, requiring only minimal collective operations to synchronize updates across the cluster.
+            </p>
+
+            <div class="content has-text-centered">
+              <img src="static/images/throughput_scaling.png" alt="algebraic reasoning" class="center" style="width: 100%; height: auto;">
+              <p>
+                Throughput (k tokens/s) across different numbers of GPUs. The solid line denotes the actual throughput, and the dashed line denotes the ideal linear scaling throughput. The ideal throughput of $k$ GPUs is defined as $T_{k, ideal}=T_{8,real}\times k /8$.
+              </p>
+            </div>
+
+            <div class="content has-text-centered">
+              <img src="static/images/throughput_comparison.png" alt="algebraic reasoning" class="center" style="width: 100%; height: auto;">
+              <p>
+                The table compares the throughput (k tokens/s) and scaling efficiency. The <strong>Scaling Ratio</strong> represents the throughput improvement when moving from a single H100 (1&times;1) to a 64-GPU cluster (8&times;8 H100).
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+  </div>
+</section>
 
 <!-- BUILDING SECTION -->
 <section class="hero is-light is-small">
@@ -473,30 +511,47 @@
 
           <h4>Batch-Parallel Strategy</h4>
           <p>
-            Multiplications occur only within blocks. We skip full matrix construction and treat blocks as a batch, performing <strong>batch-wise matrix multiplications</strong> to save GPU memory and improve runtime.
+            In block-stochastic POET, orthogonal matrices utilize a sparse block-diagonal structure:
           </p>
-        </div>
-      </div>
-    </div>
+    
+          <div class="math-block" style="text-align: center; margin: 15px 0;">
+            \[
+            \mathbf{G}_P = \text{Diag}(\tilde{\mathbf{G}}^1_P, \dots, \tilde{\mathbf{G}}^{\lceil n/b \rceil}_P), \quad 
+            \mathbf{G}_R = \text{Diag}(\tilde{\mathbf{G}}^1_R, \dots, \tilde{\mathbf{G}}^{\lceil m/b \rceil}_R)
+            \]
+          </div>
+          <p>
+            To avoid the overhead of constructing large sparse matrices, we observe that computations occur strictly within individual blocks. We propose a <strong>batch-parallel strategy</strong> that skips explicit matrix construction. Instead, each block is treated as an independent matrix in a batch, and we perform <strong>batch-wise matrix multiplications</strong>. This optimization significantly reduces GPU memory usage and improves runtime performance.
+          </p>
 
-    <div class="columns is-centered has-text-centered">
-      <div class="column is-four-fifths">
-        <h2 class="title is-3">Efficient Cayley-Neumann Parameterization</h2>
-        <div class="content has-text-justified">
+          <h4>Efficient Cayley-Neumann Parameterization</h4>
           <p>
             POET-X stores only the upper-triangular part of skew-symmetric matrices \(\mathbf{Q}\), <strong>halving the memory footprint</strong>. We use Triton for <strong>kernel fusion</strong> in the Cayley-Neumann expansion:
           </p>
           <div class="math-block" style="text-align: center; margin: 20px 0;">
             \[ \mathbf{G} \approx 2 (\mathbf{Q} + \mathbf{Q}^2 + \mathbf{Q}^2 \cdot \mathbf{Q}) + \mathbf{Q}^2 \cdot \mathbf{Q}^2 + \mathbf{I} \]
           </div>
+          <p>
+            Compared to a naive PyTorch implementation that repeatedly reads \(\mathbf{Q}\) and \(\mathbf{Q}^2\) from slow global GPU memory for each term in \(\mathbf{G}\), our approach drastically reduces data transfer overhead. By leveraging <strong>kernel fusion</strong>, we load these tensors into low-latency shared memory only once.
+          </p>
+          <p>
+            Furthermore, fusing multiple tensor operations into a single custom kernel minimizes the number of PyTorch operator calls. This reduces CPU overhead by improving <strong>kernel launch times</strong>, leading to a more efficient execution pipeline for both forward and backward passes.
+          </p>
           <p>The backward pass is also fused using the following gradient derivation:</p>
-          <div class="math-block" style="font-size: 0.85em; overflow-x: auto; padding: 10px;">
+          <div class="math-block" style="font-size: 0.9em; overflow-x: auto; padding: 10px;">
             \[
             \begin{aligned}
             &\color{#191970}{\nabla_{1} = \frac{\partial f}{\partial \mathbf{G}}}, \quad \color{#008080}{\nabla_2 =} \color{#191970}{\nabla_1} \color{#008080}{\mathbf{Q}^\top + \mathbf{Q}^\top} \color{#191970}{\nabla_1} \\
-            &\frac{\partial f}{\partial \mathbf{Q}} = 2 (\color{#191970}{\nabla_{1}} + \color{#008080}{\nabla_2}) + (2\mathbf{Q}^\top + (\mathbf{Q}^2)^\top)\color{#008080}{\nabla_2} + (2\color{#191970}{\nabla_{1}} + \color{#008080}{\nabla_2}) (\mathbf{Q}^2)^\top
+            &\color{#C27E7E}{\nabla_3 =} \color{#191970}{\nabla_1} \color{#C27E7E}{(\mathbf{Q}^2)^\top + \mathbf{Q}^\top}\color{#008080}{\nabla_2}, \quad \color{#C2B280}{\nabla_4 =} \color{#008080}{\nabla_2} \color{#C2B280}{(\mathbf{Q}^2)^\top + (\mathbf{Q}^2)^\top}\color{#008080}{\nabla_2} \\
+            &\frac{\partial f}{\partial \mathbf{Q}} = 2\color{#191970}{\nabla_{1}} + 2\color{#008080}{\nabla_{2}} + 2\color{#C27E7E}{\nabla_{3}} + \color{#C2B280}{\nabla_{4}} \\
+            &~~~~~~~= 2 (\color{#191970}{\nabla_{1}} + \color{#008080}{\nabla_2}) + (2\mathbf{Q}^\top + (\mathbf{Q}^2)^\top)\color{#008080}{\nabla_2} + (2\color{#191970}{\nabla_{1}} + \color{#008080}{\nabla_2}) (\mathbf{Q}^2)^\top
             \end{aligned}
             \]
+          </div>
+
+          <div class="content has-text-centered">
+            <img src="static/images/cayley.png" alt="algebraic reasoning" class="center" style="width: 50%; height: auto;">
+            <p>Illustration of efficient Cayley-Neumann parameterization (batch-wise implementation). </p>
           </div>
         </div>
       </div>
@@ -507,14 +562,47 @@
         <h2 class="title is-3">Boosting Memory-Efficiency with Checkpointing</h2>
         <div class="content has-text-justified">
           <p>
-            Forward pass sequence: \(\mathbf{mm1}: \mathbf{a} = \mathbf{G}_R^\top \mathbf{x}\), 
-            \(\mathbf{mm2}: \mathbf{b} = \mathbf{W} \mathbf{a}\), and 
-            \(\mathbf{mm3}: \mathbf{z} = \mathbf{G}_P^\top \mathbf{b}\).
+            To simplify the memory analysis, we omit permutation matrices and express the forward pass as: 
+            \(\mathbf{z} = \mathbf{G}_P^\top \mathbf{W} \mathbf{G}_R^\top \mathbf{x}\). 
+            The process is executed via three sequential multiplications:
           </p>
+    
+          <div class="math-block" style="text-align: center; margin: 15px 0;">
+            \[
+            \mathbf{mm1}: \mathbf{a} = \mathbf{G}_R^\top \mathbf{x}, \quad 
+            \mathbf{mm2}: \mathbf{b} = \mathbf{W} \mathbf{a}, \quad 
+            \mathbf{mm3}: \mathbf{z} = \mathbf{G}_P^\top \mathbf{b}
+            \]
+          </div>
+
           <p>
-            Standard Autograd saves \(\mathbf{b}\) to compute \(\nabla_{\mathbf{G}_P}\). 
-            <strong>\(\text{POET-X}_{\text{mem}}\)</strong> uses gradient checkpointing to recompute \(\mathbf{b}\) on-the-fly, eliminating this storage cost.
+            To enable the backward pass, the PyTorch Autograd Engine must save specific activations, which impacts peak memory:
           </p>
+    
+          <ul>
+            <li>
+              <strong>mm3 backward:</strong> Computes \(\nabla_{\mathbf{G}_P} = \mathbf{b} \nabla_{\mathbf{z}}^\top\). This requires saving activation <strong>\(\mathbf{b}\)</strong> (shape \(\mathbb{R}^{N \times m}\)).
+            </li>
+            <li>
+              <strong>mm2 backward:</strong> Computes \(\nabla_{\mathbf{a}} = \mathbf{W}^\top \nabla_{\mathbf{b}}\). Since \(\mathbf{W}\) is fixed and requires no gradient, <strong>no additional activation</strong> is saved.
+            </li>
+            <li>
+              <strong>mm1 backward:</strong> Computes \(\nabla_{\mathbf{G}_R} = \mathbf{x} \nabla_{\mathbf{a}}^\top\). The input \(\mathbf{x}\) is already available in memory, requiring <strong>no extra storage</strong>.
+            </li>
+          </ul>
+    
+          <h4>POET-X Variants</h4>
+          <p>
+            We introduce two variants to balance the compute-memory trade-off:
+          </p>
+          <ul>
+            <li>
+              <strong>\(\text{POET-X}_{\text{fast}}\)</strong>: Follows standard Autograd logic by saving \(\mathbf{b}\). It is faster but higher in memory usage.
+            </li>
+            <li>
+              <strong>\(\text{POET-X}_{\text{mem}}\)</strong>: Uses <strong>gradient checkpointing</strong> to recompute \(\mathbf{b}\) on-the-fly during the backward pass, serving as our most memory-efficient implementation.
+            </li>
+          </ul>
         </div>
       </div>
     </div>
@@ -537,473 +625,6 @@
 </section>
 
 
-<section class="section">
-  <div class="container">
-    <section class="section">
-      <div class="container">
-        <div class="columns is-centered has-text-centered">
-          <div class="column is-four-fifths">
-            <h2 class="title is-3">Preliminaries of POET</h2>
-            <div class="content has-text-justified">
-              <p>
-                POET reparameterizes each neuron as \(\mathbf{W}_{RP} = \mathbf{R}\mathbf{W}_0\mathbf{P}\), 
-                where \(\mathbf{W}_0 \in \mathbb{R}^{m \times n}\) is a fixed random weight matrix, 
-                and \(\mathbf{R} \in \mathbb{R}^{m \times m}\), \(\mathbf{P} \in \mathbb{R}^{n \times n}\) 
-                are trainable orthogonal matrices.
-              </p>
-              <p>
-                This formulation performs an <strong>orthogonal equivalence transformation (OET)</strong> on \(\mathbf{W}_0\), 
-                defined as \(\text{OET}(\mathbf{W}; \mathbf{R}, \mathbf{P}) = \mathbf{R}\mathbf{W}\mathbf{P}\), 
-                which multiplies \(\mathbf{W}\) by orthogonal matrices from both sides. 
-                The forward pass of POET is thus:
-              </p>
-              <div class="math-block">
-                \[
-                \begin{aligned}
-                &\mathbf{y} = \mathbf{W}_{RP}^\top \mathbf{x} = (\mathbf{R}\mathbf{W}_0\mathbf{P})^\top \mathbf{x},\\
-                &\text{s.t. } \big\{ \mathbf{R}^\top\mathbf{R} = \mathbf{R}\mathbf{R}^\top = \mathbf{I}, \quad \mathbf{P}^\top\mathbf{P} = \mathbf{P}\mathbf{P}^\top = \mathbf{I} \big\}.
-                \end{aligned}
-                \]
-              </div>
-              <p>
-                After training, \(\mathbf{R}\) and \(\mathbf{P}\) can be merged into \(\mathbf{W}_{RP}\), 
-                ensuring that POET-trained networks have <strong>no inference overhead</strong>.
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <div class="columns is-centered has-text-centered">
-          <div class="column is-four-fifths">
-            <h2 class="title is-3">POET-X: Formulation</h2>
-            <div class="content has-text-justified">
-              <p>
-                In block-stochastic POET, for the \(i\)-th iteration, the orthogonal matrix \(\mathbf{R}_i\) is parameterized by:
-              </p>
-          
-              <div class="equation-box">
-                  \[
-                  \mathbf{R}_i = \underbrace{\mathbf{\Psi}_i^\top}_{\text{Column-permute}} \cdot \underbrace{\text{Diag}(\tilde{\mathbf{G}}^1_i, \tilde{\mathbf{G}}^2_i, \dots, \tilde{\mathbf{G}}^{\lceil\frac{m}{b}\rceil}_i)}_{\text{Orthogonal matrix } \mathbf{G}_i} \cdot \underbrace{\mathbf{\Psi}_i}_{\text{Row-permute}}
-                  \]
-              </div>
-          
-              <p>
-                  in which \(\tilde{\mathbf{G}}^j_i \in \mathbb{R}^{b \times b}\) is the \(j\)-th block of the block-diagonal orthogonal matrix \(\mathbf{G}_i\), and \(\mathbf{\Psi}_i, \forall i\) are all random permutation matrices. \(\mathbf{P}_i\) is also parameterized the same way.
-              </p>
-              
-              <p>
-                  The original implementation of POET directly operates on the weight matrix \(\mathbf{W}\) (i.e., \(\mathbf{W} \leftarrow \mathbf{R}_i \mathbf{W} \mathbf{P}_i\)), which is a weight-centric formulation. Despite simplicity, the weight-centric implementation incurs \(\mathcal{O}(nm^2)\) complexity (assuming an input vector \(\mathbf{x} \in \mathbb{R}^m\)). Moreover, when computing the gradient <em>w.r.t.</em> \(\mathbf{R}_i\) and \(\mathbf{P}_i\), both gradients require accessing the weight matrix \(\mathbf{W}\), thus increasing the memory. Inspired by matrix-free computation in solving large-scale linear systems, we use an input-centric formulation to implement the update \(\mathbf{W} \leftarrow \mathbf{R}_i \mathbf{W} \mathbf{P}_i\), as shown below:
-              </p>
-          
-              <div class="equation-box math-small">
-                  \[
-                  \underbrace{\overbrace{\underbrace{\mathbf{P}_i^\top\mathbf{W}^\top}_{\text{① matrix-matrix mult.}}\mathbf{R}_i^\top}^{\text{② matrix-matrix mult.}}\mathbf{x}}_{\text{③ matrix-vector mult.}} \quad \Leftrightarrow \quad \underbrace{\mathbf{P}_i^\top\overbrace{\mathbf{W}^\top\underbrace{\mathbf{R}_i^\top\mathbf{x}}_{\text{① matrix-vector mult.}}}^{\text{② matrix-vector mult.}}}_{\text{③ matrix-vector mult.}}
-                  \]
-              </div>
-          
-              <p>
-                  where the left is the weight-centric formulation which requires two matrix-matrix multiplications and one matrix-vector multiplication, and the right is the input-centric formulation which requires three matrix-vector multiplications. Inputing the permutation matrices into the forward pass, we get the following formula:
-              </p>
-          
-              <div class="equation-box">
-                  \[
-                  \mathbf{z} = \mathbf{\Phi}_{n}\mathbf{G}_P^\top\mathbf{\Phi}_{n}^\top\mathbf{W}\mathbf{\Phi}_{m}\mathbf{G}_R^\top\mathbf{\Phi}_{m}^\top\mathbf{x}
-                  \]
-              </div>
-          
-              <p>
-                  where \(\mathbf{R} = \mathbf{\Phi}_m^\top\mathbf{G}_R\mathbf{\Phi}_m\) and \(\mathbf{P} = \mathbf{\Phi}_n^\top\mathbf{G}_P\mathbf{\Phi}_n\).
-              </p>
-          
-              <p>
-                  To avoid explicitly constructing the permutation matrices, we implement our customized CUDA operator to perform the permutation. The key idea is to implement an index mapping. Let \(\mathbf{W} \in \mathbb{R}^{m \times n}\) be the original matrix, \(\mathbf{W}_{i, :}\) be the \(i\)-th row of \(\mathbf{W}\), and \(\mathbf{W}_{:, j}\) denote the \(j\)-th column. We define two base index sets \(\mathcal{I}_m = \{1, 2, \dots, m\}\) and \(\mathcal{I}_n = \{1, 2, \dots, n\}\). Then a permutation of indices \(\pi\) is defined as \(\pi(\mathcal{I}_m) = \{\pi(1), \pi(2), \dots, \pi(m)\}\) where \(\pi : \mathcal{I} \to \mathcal{I}\) is a bijection. \(\pi^{-1}\) defines the inverse mapping, and therefore \(\pi(\pi^{-1}(i)) = i\). Let \(\mathbf{\Psi}_m \in \{0, 1\}^{m \times m}\) be defined by \(\pi_p\), and \(\mathbf{\Psi}_n \in \{0, 1\}^{n \times n}\) be defined by \(\pi_q\).
-              </p>
-
-              <p>
-                To avoid explicitly constructing permutation matrices, we implement a customized CUDA operator that performs index mapping. For a weight matrix \(\mathbf{W} \in \mathbb{R}^{m \times n}\), given permutations \(\pi_p\) and \(\pi_q\), the following equations always hold:
-              </p>
-              
-              <div class="math-block" style="text-align: center;">
-                \[
-                \begin{aligned}
-                    \mathbf{\Psi}_m \mathbf{W} \equiv \mathbf{W}' \quad &\Leftrightarrow \quad (\mathbf{W}')_{i, :} = \mathbf{W}_{\pi_p(i), :} \\
-                    \mathbf{\Psi}_m^\top \mathbf{W} \equiv \mathbf{W}' \quad &\Leftrightarrow \quad (\mathbf{W}')_{i, :} = \mathbf{W}_{\pi^{-1}_p(i), :} \\
-                    \mathbf{W} \mathbf{\Psi}_n \equiv \mathbf{W}' \quad &\Leftrightarrow \quad (\mathbf{W})_{:, j} = \mathbf{W}_{:, \pi^{-1}_q(j)} \\
-                    \mathbf{W} \mathbf{\Psi}_n^\top \equiv \mathbf{W}' \quad &\Leftrightarrow \quad (\mathbf{W}')_{:, j} = \mathbf{W}_{:, \pi_q(j)}
-                \end{aligned}
-                \]
-              </div>
-        
-              <p>
-                By accessing the weight matrix in this prescribed order, we eliminate the need for large matrix-matrix multiplications with sparse permutation matrices. Our customized CUDA operator achieves up to <strong>20&times; speedup</strong> compared to standard implementations.
-              </p>
-        
-              <h4>Permutation Reduction</h4>
-              <p>
-                In the input-centric formulation, the forward pass involves four permutations. However, we can merge two of these into the weight matrix \(\mathbf{W}\) in advance:
-              </p>
-        
-              <div class="math-block" style="text-align: center; margin: 20px 0;">
-                \[
-                \mathbf{z} = \mathbf{\Phi}_{n}\mathbf{G}_P^\top \underbrace{\mathbf{\Phi}_{n}^\top \mathbf{W} \mathbf{\Phi}_{m}}_{\text{Pre-computed}} \mathbf{G}_R^\top \mathbf{\Phi}_{m}^\top \mathbf{x}
-                \]
-              </div>
-        
-              <p>
-                Since \(\mathbf{W}\) remains fixed during the inner loop of optimizing \(\mathbf{G}_P\) and \(\mathbf{G}_R\), pre-computing the permuted \(\mathbf{W}\) significantly reduces redundant computation.
-              </p>
-
-              <p>
-                In block-stochastic POET, the orthogonal matrices \(\mathbf{G}_P\) and \(\mathbf{G}_R\) adopt a block-diagonal sparse structure:
-              </p>
-        
-              <div class="math-block" style="text-align: center;">
-                \[
-                \mathbf{G}_P = \text{Diag}(\tilde{\mathbf{G}}^1_P, \dots, \tilde{\mathbf{G}}^{\lceil n/b \rceil}_P), \quad \mathbf{G}_R = \text{Diag}(\tilde{\mathbf{G}}^1_R, \dots, \tilde{\mathbf{G}}^{\lceil m/b \rceil}_R)
-                \]
-              </div>
-        
-              <p>
-                Instead of constructing these massive sparse matrices, we observe that multiplications only occur within each block. We propose a <strong>batch-parallel strategy</strong>: each block is treated as an independent matrix in a batch, and we perform batch-wise matrix multiplications. This approach drastically reduces GPU memory consumption and improves runtime efficiency.
-              </p>
-
-              <h4>Efficient Cayley-Neumann Parameterization</h4>
-
-              <p>
-                Efficiently ensuring that each diagonal block (e.g., \(\tilde{\mathbf{G}}^i_P, \tilde{\mathbf{G}}^j_R\)) remains orthogonal during training is a major challenge. POET-X optimizes the <strong>Cayley-Neumann Parameterization (CNP)</strong> by optimizing the two steps <code>skew_symmetric</code> and <code>cayley_neumann</code>.
-              </p>
-
-              <p>
-                In the <code>skew_symmetric</code> operation, the algorithm constructs a skew-symmetric matrix \(\mathbf{Q} \in \mathbb{R}^{b \times b}\) from the stored parameters. By definition, this matrix satisfies the anti-symmetry property: \(\mathbf{Q} = -\mathbf{Q}^\top\). In POET-X, we store skew-symmetric matrices \(\mathbf{Q}\) using only their upper-triangular part. This reduces the parameter count from \(b^2\) to \(b(b-1)/2\), effectively <strong>halving the memory footprint</strong> for optimizer states and gradients. The <code>skew_symmetric</code> operation efficiently reconstructs the full matrix \(\mathbf{Q}\) from these compact parameters.
-              </p>
-
-              <p>
-                In the <code>cayley_neumann</code> operation, the algorithm computes the Cayley transform of \(\mathbf{Q}\) by re-arranging the CNP terms (for \(k=3\)), we observe a shared dependency on lower-order terms:
-              </p>
-              <div class="math-block" style="text-align: center;">
-                \[
-                \mathbf{G} \approx 2 (\mathbf{Q} + \mathbf{Q}^2 + \mathbf{Q}^2 \cdot \mathbf{Q}) + \mathbf{Q}^2 \cdot \mathbf{Q}^2 + \mathbf{I}
-                \]
-              </div>
-              <p>
-                Since all computations depend solely on \(\mathbf{Q}\) and \(\mathbf{Q}^2\), we leverage <strong>kernel fusion</strong> via Triton. The tensors \(\mathbf{Q}\) and \(\mathbf{Q}^2\) are loaded once into high-speed shared memory, where higher-order terms are computed and summed within a single kernel. This minimizes global memory (VRAM) traffic and reduces CPU launch overhead.
-              </p>
-
-              <p>
-                The same fusion strategy is applied to the backward pass. Given a function \(f(\mathbf{G}(\mathbf{Q}))\), the gradient with respect to \(\mathbf{Q}\) is derived as:
-              </p>
-        
-              <div class="math-block" style="font-size: 0.9em; overflow-x: auto; padding: 10px;">
-                \[
-                \begin{aligned}
-                &\color{#191970}{\nabla_{1} = \frac{\partial f}{\partial \mathbf{G}}}, \quad \color{#008080}{\nabla_2 =} \color{#191970}{\nabla_1} \color{#008080}{\mathbf{Q}^\top + \mathbf{Q}^\top} \color{#191970}{\nabla_1} \\
-                &\color{#C27E7E}{\nabla_3 =} \color{#191970}{\nabla_1} \color{#C27E7E}{(\mathbf{Q}^2)^\top + \mathbf{Q}^\top}\color{#008080}{\nabla_2}, \quad \color{#C2B280}{\nabla_4 =} \color{#008080}{\nabla_2} \color{#C2B280}{(\mathbf{Q}^2)^\top + (\mathbf{Q}^2)^\top}\color{#008080}{\nabla_2} \\
-                &\frac{\partial f}{\partial \mathbf{Q}} = 2\color{#191970}{\nabla_{1}} + 2\color{#008080}{\nabla_{2}} + 2\color{#C27E7E}{\nabla_{3}} + \color{#C2B280}{\nabla_{4}} \\
-                &~~~~~~~= 2 (\color{#191970}{\nabla_{1}} + \color{#008080}{\nabla_2}) + (2\mathbf{Q}^\top + (\mathbf{Q}^2)^\top)\color{#008080}{\nabla_2} + (2\color{#191970}{\nabla_{1}} + \color{#008080}{\nabla_2}) (\mathbf{Q}^2)^\top
-                \end{aligned}
-                \]
-              </div>
-        
-              <p>
-                The gradient \(\frac{\partial f}{\partial \mathbf{Q}}\) depends on \(\mathbf{Q}, \mathbf{Q}^2, \nabla_1,\) and \(\nabla_2\). By implementing this as a customized Triton operator, we gain fine-grained control over GPU memory access. Empirical evaluations show a <strong>\(3\times\)speedup</strong> over native PyTorch implementations.
-              </p>
-            </div>
-          </div>
-
-          <div class="columns is-centered has-text-centered">
-            <div class="column is-four-fifths">
-              <h2 class="title is-3">Boosting Memory-Efficiency with Checkpointing</h2>
-              <div class="content has-text-justified">
-                <p>
-                  Your paragraph text here.
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div class="columns is-centered has-text-centered">
-            <div class="column is-four-fifths">
-              <h2 class="title is-3">POET-XQ: Quantized POET-X Training</h2>
-              <div class="content has-text-justified">
-                <p>
-                  Leveraging custom CUDA kernels for both forward and backward passes, POET-X readily supports <strong>quantized training</strong>. The core mechanism involves storing only the base model’s low-bit quantized weight matrices and dequantizing them <em>on the fly</em>. This ensures that high-precision weights are never stored in memory during the activation phase.
-                </p>
-          
-                <p>
-                  Consequently, <strong>POET-XQ</strong> is specifically implemented on <code>POET-X<sub>mem</sub></code>. In this configuration, intermediate activations are recomputed during the backward pass to save space. In contrast, <code>POET-X<sub>fast</sub></code> is less suitable for quantized training because it requires storing extra activation tensors, which would necessitate keeping high-precision weight matrices in memory.
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-  </div>
-</section>
-
-
-
-
-<!-- BUILDING SECTION -->
-<section class="hero is-light is-small">
-  <div class="hero-body has-text-centered">
-    <h1 class="title is-1 mmmu">POET’s superior Performance Stems from Energy and Spectrum Preservation.</h1>
-  </div>
-</section>
-
-<section class="section">
-  <div class="container">
-    <!-------------------------------------------------------------------- RESULTS SECTION -------------------------------------------------------------------->
-    <section class="section">
-      <div class="container">
-        <div class="columns is-centered has-text-centered">
-          <div class="column is-four-fifths">
-            <h2 class="title is-3">Neuron Initialization</h2>
-            <div class="content has-text-justified">
-              <p>
-                Since POET preserves the spectral properties of the initial weight matrix 
-                \( \mathbf{W}_0 \), the choice of initialization plays a critical role. 
-                We propose to use the <em>normalized Gaussian initialization</em>, which normalizes neurons drawn from a zero-mean Gaussian with fixed variance.
-                We empirically compare different random initialization schemes for POET in the following table. Results show that the normalized Gaussian initialization leads to the best final performance. We hypothesize that the reason for this favorable performance is that POET with normalized Gaussian initialization preserves both hyperspherical energy and the spectrum during training.
-              </p>
-              <div style="display: flex; justify-content: center; margin-top: 1em;">
-                <table style="width: 350px; border-collapse: collapse;">
-                  <thead>
-                    <tr>
-                      <th style="border-bottom: 2px solid #888; padding: 6px 16px;"><b>Scheme</b></th>
-                      <th style="border-bottom: 2px solid #888; padding: 6px 16px;"><b>Perplexity</b></th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr>
-                      <td style="padding: 6px 16px;">Standard</td>
-                      <td style="padding: 6px 16px;">26.22</td>
-                    </tr>
-                    <tr>
-                      <td style="padding: 6px 16px;">Xavier</td>
-                      <td style="padding: 6px 16px;">25.79</td>
-                    </tr>
-                    <tr style="background-color: #f5f7fa;">
-                      <td style="padding: 6px 16px;">Uniform Spectrum</td>
-                      <td style="padding: 6px 16px;">27.29</td>
-                    </tr>
-                    <tr style="background-color: #f5f7fa;">
-                      <td style="padding: 6px 16px;">Normalized Gaussian</td>
-                      <td style="padding: 6px 16px;"><b>25.37</b></td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div class="columns is-centered has-text-centered">
-          <div class="column is-four-fifths">
-            <h2 class="title is-3">Hyperspherical Energy in Training</h2>
-            <div class="content has-text-justified">
-              <p>
-                Hyperspherical energy \( \mathrm{HE}(\cdot) \) characterizes the uniformity of neurons on a unit hypersphere and can be used to characterize the neural representation of each layer. Orthogonal training [2,3] with \( \hat{\mathbf{w}}_i = \mathbf{w}_i / \|\mathbf{w}_i\| \) ensures the preservation of hyperspherical energy during training:
-              </p>
-              <br>
-              <div style="margin-top:-4mm; margin-bottom:-4.4mm;">
-                <div style="font-size:small;">
-                  \[
-                    \text{HE}(\mathbf{W}_0):=\sum_{i\neq j}\left\| \hat{\mathbf{w}}^0_i-\hat{\mathbf{w}}^0_j \right\|^{-1}
-                    =\sum_{i\neq j}\left\| \mathbf{R}\hat{\mathbf{w}}_i-\mathbf{R}\hat{\mathbf{w}}_j \right\|^{-1}
-                    =:\text{HE}(\mathbf{W}^R),
-                  \]
-                </div>
-              </div>
-              <br>
-              <p>
-                Prior work [2] has shown that energy-preserving training can effectively improve generalization.
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <div class="columns is-centered has-text-centered">
-          <div class="column is-four-fifths">
-            <h2 class="title is-3">POET with Normalized Gaussian Initialization Preserves both Energy and Spectrum</h2>
-            <div class="content has-text-justified">
-              <p>
-                Under zero-mean isotropic Gaussian initialization, spectrum-preserving training and energy-preserving training can be achieved simultaneously by POET. It also partially explains why the proposed normalized Gaussian initialization achieves the best performance (Proof in the Appendix B).
-              </p>
-              <div class="content has-text-centered">
-                <img src="static/images/throughput_scaling.png" alt="algebraic reasoning" class="center" style="width: 100%; height: auto;">
-                <p>
-                  Throughput (k tokens/s) across different numbers of GPUs. The solid line denotes the actual throughput, and the dashed line denotes the ideal linear scaling throughput. The ideal throughput of $k$ GPUs is defined as $T_{k, ideal}=T_{8,real}\times k /8$.
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-    </section>
-    </div>
-  </section>
-
-
-<!-- BUILDING SECTION -->
-<section class="hero is-light is-small">
-  <div class="hero-body has-text-centered">
-    <h1 id="SIT" class="title is-1 mmmu">Discussions and Intriging Insights</h1>
-  </div>
-</section>
-
-
-<section class="section">
-  <div class="container">
-
-    <!-------------------------------------------------------------------- RESULTS SECTION -------------------------------------------------------------------->
-    <section class="section">
-      <div class="container">
-        <div class="columns is-centered has-text-centered">
-          <div class="column is-four-fifths">
-            <h2 class="title is-3">Understanding POET Training</h2>
-            <div class="content has-text-justified">
-              <p>
-                To better understand how POET functions, we employ <em>vector probing</em> to analyze the learning dynamics of the orthogonal matrices. Vector probing evaluates an orthogonal matrix \( \mathbf{R} \) using a fixed, randomly generated unit vector \( \mathbf{v} \) by computing \( \mathbf{v}^\top \mathbf{R} \mathbf{v} \), which corresponds to the cosine similarity between \( \mathbf{R}\mathbf{v} \) and \( \mathbf{v} \). By inspecting the cosine similarities of seven orthogonal matrices throughout training, we observe that the learning process can be divided into three distinct phases (see Figure&nbsp;1):
-                <ol>
-                  <li>
-                    <em>Conical shell searching:</em> The cosine starts at 1 (i.e., \( \mathbf{R} \) is the identity) and gradually converges to a stable range of [0.6, 0.65], which we observe consistently across all learnable orthogonal matrices. This suggests that \( \mathbf{R} \) transforms \( \mathbf{v} \) into a thin conical shell around its original direction.
-                  </li>
-                  <li>
-                    <em>Stable learning on the conical shell:</em> The cosine remains within this range while the model begins to learn stably. Despite the cosine plateauing, validation perplexity continues to improve almost linearly.
-                  </li>
-                  <li>
-                    <em>Final adjusting:</em> Learning slows and eventually halts as the learning rate approaches zero.
-                  </li>
-                </ol>
-                We provide an in-depth discussion and empirical results in the Appendix.
-              </p>
-            </div>
-          </div>
-        </div>
-
-
-        <div class="columns is-centered has-text-centered">
-          <div class="column is-four-fifths">
-            <h2 class="title is-3">Connection to Generalization Theory</h2>
-            <div class="content has-text-justified">
-              <p>
-                Several previous works on generalization based on bounding the spectral norm of weight matrices. In particular, the spectrally-normalized margin analysis from Bartlett et al. bounds the misclassification error in terms of a margin-based training loss and a complexity term. The complexity term is proportional to 
-                \( Q/(\gamma n) \) where \( \gamma \) and \( n \) are margin and sample size and \( Q \)
-                bounds the spectral complexity. For an \( L \)-layer ReLU MLP
-                and maximal width \( d \), \( Q \) is bounded by
-              </p>
-              <div style="text-align: center;">
-                <p>
-                  \( Q = \left( \prod_{i=1}^L \lVert \mathbf{W}_i \rVert \right) \left( \sum_{i=1}^L \frac{(\sqrt{d} \lVert \mathbf{W}_i \rVert_F)^{2/3} }{ \lVert \mathbf{W}_i \rVert^{2/3} } \right)^{3/2} \)
-                </p>
-              </div>
-              <p>
-                where \( \lVert \cdot \rVert \)
-                and \( \lVert \cdot \rVert_F \) denote spectral and Frobenius norm respectively. Those norms remain invariant when training the network with POET and at initialization they can be bounded with high probability using standard results from random matrix theory.
-                The scale at initialization is typically chosen such that \( \mathbf{W} \in \mathbb{R}^{d \times d} \) satisfies \( \lVert \mathbf{W} \rVert = O(1) \) and
-                \( \lVert \mathbf{W} \rVert_F = O(\sqrt{d}) \)
-                so that \( Q = O_L(d) \). For detailed analysis, please refer to the Appendix of the paper.
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <div class="columns is-centered has-text-centered">
-          <div class="column is-four-fifths">
-            <h2 class="title is-3">Efficient Cayley-Neumann Parameterization</h2>
-            <div class="content has-text-justified">
-              <p>
-                The POET framework orthogonalizes matrices via two operations: <strong>skew_symmetric</strong> and <strong>cayley_neumann</strong>. The first constructs a skew-symmetric matrix \( \mathbf{Q} = -\mathbf{Q}^\top \in \mathbb{R}^{b \times b} \). The second transforms \( \mathbf{Q} \) into an approximately orthogonal matrix using the Cayley–Neumann polynomial (CNP). Empirical results suggest that a CNP of degree \( k = 3 \) offers an optimal balance between accuracy and efficiency, yielding the orthogonal matrix approximation \( \mathbf{G} \):
-              </p>
-              <div class="content has-text-centered">
-                <img src="static/images/cayley.png" alt="algebraic reasoning" class="center" style="width: 50%; height: auto;">
-                <p>Illustration of efficient Cayley-Neumann parameterization (batch-wise implementation). </p>
-              </div> 
-            </div>
-          </div>
-        </div>
-
-        <div class="columns is-centered has-text-centered">
-          <div class="column is-four-fifths">
-            <h2 class="title is-3">Weight Update Evenness of Different POET Variants</h2>
-            <div class="content has-text-justified">
-              <p>
-                To understand the higher parameter efficiency of POET-BS compared to POET-FS, we employ a toy example to visualize their different weight update mechanisms by counting the total number of updates for each element of the weight matrix. The visualization results are given below. Specifically, in this experiment, a 64 x 64 matrix was randomly initialized and trained for 100 steps under various POET-BS and POET-FS configurations. The merge-then-reinitialize trick is performed at each iteration, and the same set of weight elements was effectively updated between two successive merge-then-reinitialize operations. For each weight element, we compute its total number of update in these 100 steps. 
-              </p>
-              <div class="content has-text-centered">
-                <img src="static/images/coverage_plot.png" alt="algebraic reasoning" class="center" style="width: 90%; height: auto;">
-                <p> Visualization of the weight update mechanism of POET-BS and POET-FS after 100 steps of update and $\` T_m = 1 \`$. </p>
-              </div> 
-            </div>
-          </div>
-        </div>
-
-        <div class="columns is-centered has-text-centered">
-          <div class="column is-four-fifths">
-            <h2 class="title is-3">Neumann Series Approximation of POET.</h2>
-            <div class="content has-text-justified">
-              <p>
-                CNP approximates the matrix inverse using a Neumann series. As the number of Neumann terms directly influences the approximation quality, understanding its impact on model performance is essential. To this end, we evaluate how varying the number of Neumann terms affects performance, using POET-FS with \( b = 1/2 \) to train LLaMA-130M. Results in the following table show that increasing the number of Neumann terms generally improves validation perplexity. However, this also leads to slower training. Moreover, Using only 1 Neumann term (\( k=1 \)) leads to training divergence, highlighting the critical role of maintaining orthogonality. To balance overhead and performance, we find that using 5 Neumann terms is a good trade-off.
-              </p>
-              <div class="content has-text-centered">
-                <img src="static/images/ortho_error.png" alt="algebraic reasoning" class="center" style="width: 90%; height: auto;">
-                <p> Approximation error of orthogonal matrices \( \mathbf{R} \) and \( \mathbf{P} \) of a weight matrix. </p>
-              </div> 
-              <div style="text-align: center;">
-                <table style="width: auto; border-collapse: collapse; margin: 1em auto;">
-                  <thead>
-                    <tr>
-                      <th style="padding: 8px; border-bottom: 2px solid #ddd; text-align: left;"><strong>Scheme</strong></th>
-                      <th style="padding: 8px; border-bottom: 2px solid #ddd; text-align: left;"><strong>Perplexity</strong></th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr>
-                      <td style="padding: 8px;">\( k=1 \)</td>
-                      <td style="padding: 8px;">Not converged</td>
-                    </tr>
-                    <tr>
-                      <td style="padding: 8px;">\( k=2 \)</td>
-                      <td style="padding: 8px;">22.56</td>
-                    </tr>
-                    <tr>
-                      <td style="padding: 8px;">\( k=3 \)</td>
-                      <td style="padding: 8px;">21.54</td>
-                    </tr>
-                    <tr>
-                      <td style="padding: 8px;">\( k=4 \)</td>
-                      <td style="padding: 8px;">20.22</td>
-                    </tr>
-                    <tr>
-                      <td style="padding: 8px;">\( k=5 \)</td>
-                      <td style="padding: 8px;"><strong>20.19</strong></td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-    </div>
-  </section>
-
-
-<!-- @PAN TODO: bibtex -->
-<section class="section" id="BibTeX">
-  <div class="container is-max-desktop content">
-    <h2 class="title is-3 has-text-centered">BibTeX</h2>
-    <pre><code>
-      @article{qiu2025poet,
-        title={Reparameterized LLM Training via Orthogonal Equivalence Transformation},
-        author={Qiu, Zeju and Buchholz, Simon and Xiao, Tim Z. and Dax, Maximilian and Sch\"olkopf, Bernhard and Liu, Weiyang},
-        journal={arXiv preprint arXiv:2506.08001},
-        year={2025}
-      }
-    </code></pre>
-  </div>
-</section>
 
 <!-- References Section -->
 <section class="section" id="references">
