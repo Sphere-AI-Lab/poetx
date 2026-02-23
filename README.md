@@ -2,7 +2,7 @@
 
 This repository contains the official implementation for the paper:
 
-**Reparameterized LLM Training via Orthogonal Equivalence Transformation** ([paper](https://arxiv.org)).
+**POET-X: Memory-efficient LLM Training by Scaling Orthogonal Transformation** ([paper](https://arxiv.org)).
 
 
 ## Status
