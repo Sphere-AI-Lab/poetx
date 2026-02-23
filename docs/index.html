@@ -373,69 +373,371 @@
 
 
 <section class="section">
-<div class="container">
-  <!-------------------------------------------------------------------- RESULTS SECTION -------------------------------------------------------------------->
-  <section class="section">
-    <div class="container">
-      <div class="columns is-centered has-text-centered">
-        <div class="column is-four-fifths">
-          <h2 class="title is-3">Training Algorithm</h2>
-          <div class="content has-text-justified">
-            <p><strong>Step 1: Initialization.</strong> We initialize the weight matrices using normalized Gaussian: \( \mathbf{W} \leftarrow \mathbf{W}_0 \).</p>
-            <p><strong>Step 2: Orthogonal matrix initialization.</strong> For fully stochastic SPO, we randomly sample an index set \( \mathbf{S} \), and parameterize \( \tilde{\mathbf{G}}_{R} \in \mathbb{R}^{b \times b} \) and \( \tilde{\mathbf{G}}_{P} \in \mathbb{R}^{b \times b} \) using CNP. Both matrices are initialized as identity, so \( \mathbf{R} \) and \( \mathbf{P} \) also start as identity matrices. For block-stochastic SPO, we sample a random permutation matrix \( \mathbf{\Psi}_R, \mathbf{\Psi}_P \), and parameterize \( \{ \tilde{\mathbf{G}}_R^{1}, \cdots, \tilde{\mathbf{G}}_R^{\lceil m/b \rceil} \} \) and \( \{ \tilde{\mathbf{G}}_P^{1}, \cdots, \tilde{\mathbf{G}}_P^{\lceil m/b \rceil} \} \) using CNP. Then we initialize them as the identity, so \( \mathbf{R} \) and \( \mathbf{P} \) again start as identity matrices.</p>
-            <p><strong>Step 3: Efficient orthogonal parameterization.</strong> For fully stochastic SPO, we have \( \mathbf{R} = \mathbf{I}_m + \mathbf{D}(\mathbf{S})(\tilde{\mathbf{G}}_R - \mathbf{I}_b)\mathbf{D}(\mathbf{S})^\top \) and \( \mathbf{P} = \mathbf{I}_m + \mathbf{D}(\mathbf{S})(\tilde{\mathbf{G}}_P - \mathbf{I}_b)\mathbf{D}(\mathbf{S})^\top \). For block-stochastic SPO, we have \( \mathbf{R} = \mathbf{\Psi}_R^\top \mathrm{Diag}(\tilde{\mathbf{G}}^1_R, \cdots, \tilde{\mathbf{G}}^{\lceil m/b \rceil}_R)\mathbf{\Psi}_R \) and \( \mathbf{P} = \mathbf{\Psi}_P^\top \mathrm{Diag}(\tilde{\mathbf{G}}^1_P, \cdots, \tilde{\mathbf{G}}^{\lceil m/b \rceil}_P)\mathbf{\Psi}_P \).</p>
-            <p><strong>Step 4: Inner training loop for updating orthogonal matrices.</strong> The equivalent weight matrix in the forward pass is \( \mathbf{R}\mathbf{W}\mathbf{P} \). Gradients are backpropagated through \( \mathbf{R} \) and \( \mathbf{P} \) to update \( \tilde{\mathbf{G}}_{R}, \tilde{\mathbf{G}}_{P} \) (fully stochastic) or \( \tilde{\mathbf{G}}_{R}^i, \tilde{\mathbf{G}}_{P}^i, \forall i \) (block-stochastic). This inner loop runs for a fixed number of iterations.</p>
-            <p><strong>Step 5: Merge-then-reinitialize.</strong> The learned orthogonal matrices \( \mathbf{R} \) and \( \mathbf{P} \) are merged into the weight matrix by \( \mathbf{W} \leftarrow \mathbf{R}\mathbf{W}\mathbf{P} \). If not terminated, return to <strong>Step 2</strong> for reinitialization.</p>
+  <div class="container">
+    
+    <div class="columns is-centered has-text-centered">
+      <div class="column is-four-fifths">
+        <h2 class="title is-3">Preliminaries of POET</h2>
+        <div class="content has-text-justified">
+          <p>
+            POET reparameterizes each neuron as \(\mathbf{W}_{RP} = \mathbf{R}\mathbf{W}_0\mathbf{P}\), 
+            where \(\mathbf{W}_0 \in \mathbb{R}^{m \times n}\) is a fixed random weight matrix, 
+            and \(\mathbf{R} \in \mathbb{R}^{m \times m}\), \(\mathbf{P} \in \mathbb{R}^{n \times n}\) 
+            are trainable orthogonal matrices.
+          </p>
+          <p>
+            This formulation performs an <strong>orthogonal equivalence transformation (OET)</strong> on \(\mathbf{W}_0\), 
+            defined as \(\text{OET}(\mathbf{W}; \mathbf{R}, \mathbf{P}) = \mathbf{R}\mathbf{W}\mathbf{P}\), 
+            which multiplies \(\mathbf{W}\) by orthogonal matrices from both sides. 
+            The forward pass of POET is thus:
+          </p>
+          <div class="math-block">
+            \[
+            \begin{aligned}
+            &\mathbf{y} = \mathbf{W}_{RP}^\top \mathbf{x} = (\mathbf{R}\mathbf{W}_0\mathbf{P})^\top \mathbf{x},\\
+            &\text{s.t. } \big\{ \mathbf{R}^\top\mathbf{R} = \mathbf{R}\mathbf{R}^\top = \mathbf{I}, \quad \mathbf{P}^\top\mathbf{P} = \mathbf{P}\mathbf{P}^\top = \mathbf{I} \big\}.
+            \end{aligned}
+            \]
           </div>
+          <p>
+            After training, \(\mathbf{R}\) and \(\mathbf{P}\) can be merged into \(\mathbf{W}_{RP}\), 
+            ensuring that POET-trained networks have <strong>no inference overhead</strong>.
+          </p>
         </div>
       </div>
+    </div>
 
-      <div class="columns is-centered has-text-centered">
-        <div class="column is-four-fifths">
-          <h2 class="title is-3">Efficient Approximation to Orthogonality</h2>
-          <div class="content has-text-justified">
-            <p>
-              POET is conceptually simple, requiring only the optimization of two orthogonal matrices. However, these matrices are typically large, and naively optimizing them leads to significant computational challenges. We introduce the <strong>Stochastic Primitive Optimization</strong> (SPO). The core idea of SPO is inspired by how QR factorization is performed using Givens rotations and Householder transformations. Both methods construct a large orthogonal matrix \( \mathbf{R} \) by sequentially applying primitive orthogonal transformations (e.g., Givens rotations or Householder reflections), i.e., \( \mathbf{R} = \prod_{i=1}^c \mathbf{G}_i \), where \( \mathbf{G}_i \) denotes the \( i \)-th primitive orthogonal matrix. While each \( \mathbf{G}_i \) is of the same size as \( \mathbf{R} \), it is parameterized by significantly fewer degrees of freedom. Both Givens rotation and Householder reflection use relatively low-capacity parameterizations—for example, each Givens rotation \( \mathbf{G}_i \) involves only a single effective parameter—which limits their efficiency in representing the full orthogonal matrix. SPO follows a similar idea of factorizing the original orthogonal matrix into multiple primitive orthogonal matrices. However, unlike Givens and Householder methods, SPO treats the number of effective parameters in each primitive matrix as a tunable hyperparameter and adopts a stochastic sparsity pattern.
-            </p>
-            <img src="static/images/block_pattern.png" alt="algebraic reasoning" class="center" style="width: 100%; height: auto;">
-            <br>
-            <ul>
-              <li>
-                <strong>Fully stochastic SPO.</strong> The basic idea of fully stochastic SPO is to randomly sample a small submatrix and enforce its orthogonality, allowing it to be easily extended to a full orthogonal matrix by embedding it within an identity matrix—a process similar to Givens or Householder transformations. To represent a large orthogonal matrix \( \mathbf{R} \in \mathbb{R}^{m \times m} \), we start by defining \( c \) index sets \( \mathbf{S}^j = \{ s^j_1, \cdots, s^j_b \} \subseteq \{ 1, \cdots, m \} \) (\( j \in [1, c] \)), where each set has cardinality \( |\mathbf{S}^j| = b \), a hyperparameter controlling the number of effective parameters of a primitive orthogonal matrix. \( \mathbf{S}^j, \forall j \) are randomly sampled from the full indices \( \{ 1, \cdots, m \} \). Let \( \tilde{\mathbf{G}}_j \in \mathbb{R}^{b \times b} \) be a small orthogonal matrix, and \( \mathbf{D}(\mathbf{S}^j) = \{ \mathbf{e}(s^j_1), \cdots, \mathbf{e}(s^j_b) \} \in \mathbb{R}^{m \times b} \) be a selection matrix, where \( \mathbf{e}(k) \) is the standard basis vector with a 1 in the \( k \)-th position and 0 elsewhere. The factorization is given by:
-                <br><br>
-                <span style="display:block; text-align:center;">
-                  \( \mathbf{R} = \prod_{i=1}^c \left( \underbrace{ \mathbf{I}_m + \mathbf{D}(\mathbf{S}^i) \cdot (\tilde{\mathbf{G}}_i - \mathbf{I}_b) \cdot \mathbf{D}(\mathbf{S}^i)^\top }_{ \mathbf{G}_i\text{: The } i\text{-th primitive orthogonal matrix} } \right), \quad \text{s.t.}~ \tilde{\mathbf{G}}_i^\top \tilde{\mathbf{G}}_i = \tilde{\mathbf{G}}_i \tilde{\mathbf{G}}_i^\top = \mathbf{I}_b,~\forall i \)
-                </span>
-                <br>
-                where \( \mathbf{D}(\mathbf{S}^i) \cdot (\mathbf{A}) \cdot \mathbf{D}(\mathbf{S}^i)^\top \) is a projector that replaces the \( b \times b \) sub-block with \( \mathbf{A} \). \( \mathbf{I}_m \) and \( \mathbf{I}_b \) are identity matrices of size \( m \times m \) and \( b \times b \), respectively. To efficiently parameterize small orthogonal matrices \( \tilde{\mathbf{G}}_i \), we can use the CNP introduced in the next section.
-              </li>
-              <li>
-                <strong>Block-stochastic SPO.</strong> While fully stochastic SPO is simple, it may fail to transform all neuron dimensions because the identity matrix leaves part of the space unchanged. To address this, we propose block-stochastic SPO, which first constructs a block-diagonal orthogonal matrix with small blocks for parameter efficiency, and then applies a random permutation to enhance expressiveness by randomizing the sparsity pattern. Block-stochastic SPO transforms all neuron dimensions simultaneously. Formally, we have:
-                <br><br>
-                <span style="display:block; text-align:center;">
-                  \( \mathbf{R} = \prod_{i=1}^c \left( \underbrace{ \mathbf{\Psi}_i^\top \cdot \mathrm{Diag}(\tilde{\mathbf{G}}^1_i, \tilde{\mathbf{G}}^2_i, \cdots, \tilde{\mathbf{G}}^{\lceil m/b \rceil}_i) \cdot \mathbf{\Psi}_i }_{ \mathbf{G}_i\text{: The } i\text{-th primitive orthogonal matrix} } \right), \quad \text{s.t.}~ (\tilde{\mathbf{G}}_i^j)^\top \tilde{\mathbf{G}}_i^j = \tilde{\mathbf{G}}_i^j (\tilde{\mathbf{G}}_i^j)^\top = \mathbf{I}_b,~\forall i, j \)
-                </span>
-                <br>
-                where \( \tilde{\mathbf{G}}^j_i \in \mathbb{R}^{b \times b} \) is the \( j \)-th block of the block diagonal matrix, and \( \mathbf{\Psi}_i, \forall i \) are all random permutation matrices. As long as each diagonal block \( \tilde{\mathbf{G}}^j_i \) is an orthogonal matrix, both \( \mathbf{G}_i \) and \( \mathbf{R} \) are also orthogonal matrices. We also use CNP to efficiently parameterize each orthogonal block \( \tilde{\mathbf{G}}^j_i \).
-              </li>
-              <li>
-                <strong>Cayley-Neumann Parameterization (CNP)</strong>
-                <p>
-                  The classic Cayley parameterization generates an orthogonal matrix \(\mathbf{R}\) in the form of \(\mathbf{R}=(\mathbf{I}+\mathbf{Q})(\mathbf{I}-\mathbf{Q})^{-1}\) where \(\mathbf{Q}\) is a skew-symmetric matrix satisfying \(\mathbf{Q}=-\mathbf{Q}^\top\). A minor caveat of this parameterization is that it only produces orthogonal matrices with determinant \(1\) (i.e., elements of the special orthogonal group), but empirical results in Orthogonal Finetuning (OFT) indicate that this constraint does not hurt performance. However, the matrix inverse in the original Cayley parameterization introduces numerical instability and computational overhead, limiting its scalability to large orthogonal matrices. To address this, we approximate the matrix inverse using a truncated Neumann series:
-                </p>
-                \begin{equation}\label{eq:cnp}
-                  \mathbf{R}=(\mathbf{I}+\mathbf{Q})(\mathbf{I}-\mathbf{Q})^{-1}=(\mathbf{I}+\mathbf{Q})\cdot\big(\sum_{i=0}^\infty \mathbf{Q}^i \big) \approx (\mathbf{I}+\mathbf{Q})\cdot\big(\mathbf{I}+\sum_{i=1}^k \mathbf{Q}^i \big),
-                \end{equation}
-                <p>
-                  where a larger number of approximation terms \(k\) leads to a smaller approximation error. By avoiding matrix inversion, the training stability of POET is improved; however, this comes with a price--the approximation is valid only when the Neumann series converges in the operator norm. To initialize orthogonal matrices as identity, we set \(\mathbf{Q}\) to a zero matrix in CNP, satisfying the convergence condition initially. As the training progresses, however, updates to \(\mathbf{Q}\) may cause its operator norm to exceed \(1\), violating this condition. Fortunately, our merge-then-reinitialize trick mitigates this issue by periodically resetting \(\mathbf{Q}\) to a zero matrix, ensuring its operator norm remains small.
-                </p>
-              </li>
-            </ul>
+    <div class="columns is-centered has-text-centered">
+      <div class="column is-four-fifths">
+        <h2 class="title is-3">POET-X: Formulation</h2>
+        <div class="content has-text-justified">
+          <p>
+            In block-stochastic POET, the orthogonal matrix \(\mathbf{R}_i\) is parameterized as a block-diagonal structure with random permutations:
+          </p>
+          <div class="math-block" style="text-align: center; margin: 20px 0;">
+              \[
+              \mathbf{R}_i = \underbrace{\mathbf{\Psi}_i^\top}_{\text{Column-permute}} \cdot \underbrace{\text{Diag}(\tilde{\mathbf{G}}^1_i, \dots, \tilde{\mathbf{G}}^{\lceil\frac{m}{b}\rceil}_i)}_{\text{Orthogonal matrix } \mathbf{G}_i} \cdot \underbrace{\mathbf{\Psi}_i}_{\text{Row-permute}}
+              \]
+          </div>
+          <p>
+            The weight-centric implementation incurs \(\mathcal{O}(nm^2)\) complexity. To solve this, we use an <strong>input-centric formulation</strong>:
+          </p>
+          <div class="math-block" style="text-align: center; margin: 20px 0;">
+              \[
+              \underbrace{\overbrace{\underbrace{\mathbf{P}_i^\top\mathbf{W}^\top}_{\text{① mm}}\mathbf{R}_i^\top}^{\text{② mm}}\mathbf{x}}_{\text{③ mv}} \quad \Leftrightarrow \quad \underbrace{\mathbf{P}_i^\top\overbrace{\mathbf{W}^\top\underbrace{\mathbf{R}_i^\top\mathbf{x}}_{\text{① mv}}}^{\text{② mv}}}_{\text{③ mv}}
+              \]
+          </div>
+
+          <p>
+            The complete inference formula for one weight matrix is defined as:
+          </p>
+    
+          <div class="math-block" style="text-align: center; margin: 15px 0;">
+            \[ \mathbf{z} = \mathbf{\Phi}_{n}\mathbf{G}_P^\top\mathbf{\Phi}_{n}^\top\mathbf{W}\mathbf{\Phi}_{m}\mathbf{G}_R^\top\mathbf{\Phi}_{m}^\top\mathbf{x} \]
+          </div>
+    
+          <p>
+            where \(\mathbf{R}=\mathbf{\Phi}_m^\top\mathbf{G}_R\mathbf{\Phi}_m\) and \(\mathbf{P}=\mathbf{\Phi}_n^\top\mathbf{G}_P\mathbf{\Phi}_n\). To minimize memory overhead, we implement two core optimizations:
+          </p>
+    
+          <h4>Permutation Acceleration</h4>
+          <p>
+            Instead of explicit matrix construction, we use a <strong>custom CUDA operator</strong> to implement index mapping. For permutations \(\pi_p\) and \(\pi_q\), we apply the following bijections:
+          </p>
+     
+          <div class="math-block" style="text-align: center; margin: 15px 0; font-size: 0.95em;">
+            \[
+            \begin{aligned}
+                \mathbf{\Psi}_m \mathbf{W} \equiv \mathbf{W}' \Leftrightarrow (\mathbf{W}')_{i, :} = \mathbf{W}_{\pi_p(i), :} & \quad & \mathbf{W} \mathbf{\Psi}_n \equiv \mathbf{W}' \Leftrightarrow (\mathbf{W})_{:, j} = \mathbf{W}_{:, \pi^{-1}_q(j)} \\
+                \mathbf{\Psi}_m^\top \mathbf{W} \equiv \mathbf{W}' \Leftrightarrow (\mathbf{W}')_{i, :} = \mathbf{W}_{\pi^{-1}_p(i), :} & \quad & \mathbf{W} \mathbf{\Psi}_n^\top \equiv \mathbf{W}' \Leftrightarrow (\mathbf{W}')_{:, j} = \mathbf{W}_{:, \pi_q(j)}
+            \end{aligned}
+            \]
+          </div>
+    
+          <p>
+            By accessing weights in a prescribed order, this approach achieves up to <strong>20&times; speedup</strong> in both forward and backward passes.
+          </p>
+    
+          <h4>Permutation Reduction</h4>
+          <p>
+            In the input-centric formulation, we merge two permutations directly into \(\mathbf{W}\) at the start of the inner loop:
+          </p>
+    
+          <div class="math-block" style="text-align: center; margin: 15px 0;">
+            \[ \mathbf{z} = \mathbf{\Phi}_{n}\mathbf{G}_P^\top \underbrace{\mathbf{\Phi}_{n}^\top \mathbf{W} \mathbf{\Phi}_{m}}_{\text{Pre-computed}} \mathbf{G}_R^\top \mathbf{\Phi}_{m}^\top \mathbf{x} \]
+          </div>
+    
+          <p>
+            Since \(\mathbf{W}\) remains fixed during the optimization of \(\mathbf{G}_P\) and \(\mathbf{G}_R\), pre-computing the permuted weights eliminates redundant calculations and significantly reduces total runtime.
+          </p>
+
+          <h4>Batch-Parallel Strategy</h4>
+          <p>
+            Multiplications occur only within blocks. We skip full matrix construction and treat blocks as a batch, performing <strong>batch-wise matrix multiplications</strong> to save GPU memory and improve runtime.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <div class="columns is-centered has-text-centered">
+      <div class="column is-four-fifths">
+        <h2 class="title is-3">Efficient Cayley-Neumann Parameterization</h2>
+        <div class="content has-text-justified">
+          <p>
+            POET-X stores only the upper-triangular part of skew-symmetric matrices \(\mathbf{Q}\), <strong>halving the memory footprint</strong>. We use Triton for <strong>kernel fusion</strong> in the Cayley-Neumann expansion:
+          </p>
+          <div class="math-block" style="text-align: center; margin: 20px 0;">
+            \[ \mathbf{G} \approx 2 (\mathbf{Q} + \mathbf{Q}^2 + \mathbf{Q}^2 \cdot \mathbf{Q}) + \mathbf{Q}^2 \cdot \mathbf{Q}^2 + \mathbf{I} \]
+          </div>
+          <p>The backward pass is also fused using the following gradient derivation:</p>
+          <div class="math-block" style="font-size: 0.85em; overflow-x: auto; padding: 10px;">
+            \[
+            \begin{aligned}
+            &\color{#191970}{\nabla_{1} = \frac{\partial f}{\partial \mathbf{G}}}, \quad \color{#008080}{\nabla_2 =} \color{#191970}{\nabla_1} \color{#008080}{\mathbf{Q}^\top + \mathbf{Q}^\top} \color{#191970}{\nabla_1} \\
+            &\frac{\partial f}{\partial \mathbf{Q}} = 2 (\color{#191970}{\nabla_{1}} + \color{#008080}{\nabla_2}) + (2\mathbf{Q}^\top + (\mathbf{Q}^2)^\top)\color{#008080}{\nabla_2} + (2\color{#191970}{\nabla_{1}} + \color{#008080}{\nabla_2}) (\mathbf{Q}^2)^\top
+            \end{aligned}
+            \]
           </div>
         </div>
       </div>
     </div>
-  </section>
+
+    <div class="columns is-centered has-text-centered">
+      <div class="column is-four-fifths">
+        <h2 class="title is-3">Boosting Memory-Efficiency with Checkpointing</h2>
+        <div class="content has-text-justified">
+          <p>
+            Forward pass sequence: \(\mathbf{mm1}: \mathbf{a} = \mathbf{G}_R^\top \mathbf{x}\), 
+            \(\mathbf{mm2}: \mathbf{b} = \mathbf{W} \mathbf{a}\), and 
+            \(\mathbf{mm3}: \mathbf{z} = \mathbf{G}_P^\top \mathbf{b}\).
+          </p>
+          <p>
+            Standard Autograd saves \(\mathbf{b}\) to compute \(\nabla_{\mathbf{G}_P}\). 
+            <strong>\(\text{POET-X}_{\text{mem}}\)</strong> uses gradient checkpointing to recompute \(\mathbf{b}\) on-the-fly, eliminating this storage cost.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <div class="columns is-centered has-text-centered">
+      <div class="column is-four-fifths">
+        <h2 class="title is-3">POET-XQ: Quantized POET-X Training</h2>
+        <div class="content has-text-justified">
+          <p>
+            Leveraging custom CUDA kernels for both forward and backward passes, POET-X readily supports <strong>quantized training</strong>. The core mechanism involves storing only the base model’s low-bit quantized weight matrices and dequantizing them <em>on the fly</em>. This ensures that high-precision weights are never stored in memory during the activation phase.
+          </p>
+    
+          <p>
+            Consequently, <strong>POET-XQ</strong> is specifically implemented on <code>POET-X<sub>mem</sub></code>. In this configuration, intermediate activations are recomputed during the backward pass to save space. In contrast, <code>POET-X<sub>fast</sub></code> is less suitable for quantized training because it requires storing extra activation tensors, which would necessitate keeping high-precision weight matrices in memory.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div> 
+</section>
+
+
+<section class="section">
+  <div class="container">
+    <section class="section">
+      <div class="container">
+        <div class="columns is-centered has-text-centered">
+          <div class="column is-four-fifths">
+            <h2 class="title is-3">Preliminaries of POET</h2>
+            <div class="content has-text-justified">
+              <p>
+                POET reparameterizes each neuron as \(\mathbf{W}_{RP} = \mathbf{R}\mathbf{W}_0\mathbf{P}\), 
+                where \(\mathbf{W}_0 \in \mathbb{R}^{m \times n}\) is a fixed random weight matrix, 
+                and \(\mathbf{R} \in \mathbb{R}^{m \times m}\), \(\mathbf{P} \in \mathbb{R}^{n \times n}\) 
+                are trainable orthogonal matrices.
+              </p>
+              <p>
+                This formulation performs an <strong>orthogonal equivalence transformation (OET)</strong> on \(\mathbf{W}_0\), 
+                defined as \(\text{OET}(\mathbf{W}; \mathbf{R}, \mathbf{P}) = \mathbf{R}\mathbf{W}\mathbf{P}\), 
+                which multiplies \(\mathbf{W}\) by orthogonal matrices from both sides. 
+                The forward pass of POET is thus:
+              </p>
+              <div class="math-block">
+                \[
+                \begin{aligned}
+                &\mathbf{y} = \mathbf{W}_{RP}^\top \mathbf{x} = (\mathbf{R}\mathbf{W}_0\mathbf{P})^\top \mathbf{x},\\
+                &\text{s.t. } \big\{ \mathbf{R}^\top\mathbf{R} = \mathbf{R}\mathbf{R}^\top = \mathbf{I}, \quad \mathbf{P}^\top\mathbf{P} = \mathbf{P}\mathbf{P}^\top = \mathbf{I} \big\}.
+                \end{aligned}
+                \]
+              </div>
+              <p>
+                After training, \(\mathbf{R}\) and \(\mathbf{P}\) can be merged into \(\mathbf{W}_{RP}\), 
+                ensuring that POET-trained networks have <strong>no inference overhead</strong>.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div class="columns is-centered has-text-centered">
+          <div class="column is-four-fifths">
+            <h2 class="title is-3">POET-X: Formulation</h2>
+            <div class="content has-text-justified">
+              <p>
+                In block-stochastic POET, for the \(i\)-th iteration, the orthogonal matrix \(\mathbf{R}_i\) is parameterized by:
+              </p>
+          
+              <div class="equation-box">
+                  \[
+                  \mathbf{R}_i = \underbrace{\mathbf{\Psi}_i^\top}_{\text{Column-permute}} \cdot \underbrace{\text{Diag}(\tilde{\mathbf{G}}^1_i, \tilde{\mathbf{G}}^2_i, \dots, \tilde{\mathbf{G}}^{\lceil\frac{m}{b}\rceil}_i)}_{\text{Orthogonal matrix } \mathbf{G}_i} \cdot \underbrace{\mathbf{\Psi}_i}_{\text{Row-permute}}
+                  \]
+              </div>
+          
+              <p>
+                  in which \(\tilde{\mathbf{G}}^j_i \in \mathbb{R}^{b \times b}\) is the \(j\)-th block of the block-diagonal orthogonal matrix \(\mathbf{G}_i\), and \(\mathbf{\Psi}_i, \forall i\) are all random permutation matrices. \(\mathbf{P}_i\) is also parameterized the same way.
+              </p>
+              
+              <p>
+                  The original implementation of POET directly operates on the weight matrix \(\mathbf{W}\) (i.e., \(\mathbf{W} \leftarrow \mathbf{R}_i \mathbf{W} \mathbf{P}_i\)), which is a weight-centric formulation. Despite simplicity, the weight-centric implementation incurs \(\mathcal{O}(nm^2)\) complexity (assuming an input vector \(\mathbf{x} \in \mathbb{R}^m\)). Moreover, when computing the gradient <em>w.r.t.</em> \(\mathbf{R}_i\) and \(\mathbf{P}_i\), both gradients require accessing the weight matrix \(\mathbf{W}\), thus increasing the memory. Inspired by matrix-free computation in solving large-scale linear systems, we use an input-centric formulation to implement the update \(\mathbf{W} \leftarrow \mathbf{R}_i \mathbf{W} \mathbf{P}_i\), as shown below:
+              </p>
+          
+              <div class="equation-box math-small">
+                  \[
+                  \underbrace{\overbrace{\underbrace{\mathbf{P}_i^\top\mathbf{W}^\top}_{\text{① matrix-matrix mult.}}\mathbf{R}_i^\top}^{\text{② matrix-matrix mult.}}\mathbf{x}}_{\text{③ matrix-vector mult.}} \quad \Leftrightarrow \quad \underbrace{\mathbf{P}_i^\top\overbrace{\mathbf{W}^\top\underbrace{\mathbf{R}_i^\top\mathbf{x}}_{\text{① matrix-vector mult.}}}^{\text{② matrix-vector mult.}}}_{\text{③ matrix-vector mult.}}
+                  \]
+              </div>
+          
+              <p>
+                  where the left is the weight-centric formulation which requires two matrix-matrix multiplications and one matrix-vector multiplication, and the right is the input-centric formulation which requires three matrix-vector multiplications. Inputing the permutation matrices into the forward pass, we get the following formula:
+              </p>
+          
+              <div class="equation-box">
+                  \[
+                  \mathbf{z} = \mathbf{\Phi}_{n}\mathbf{G}_P^\top\mathbf{\Phi}_{n}^\top\mathbf{W}\mathbf{\Phi}_{m}\mathbf{G}_R^\top\mathbf{\Phi}_{m}^\top\mathbf{x}
+                  \]
+              </div>
+          
+              <p>
+                  where \(\mathbf{R} = \mathbf{\Phi}_m^\top\mathbf{G}_R\mathbf{\Phi}_m\) and \(\mathbf{P} = \mathbf{\Phi}_n^\top\mathbf{G}_P\mathbf{\Phi}_n\).
+              </p>
+          
+              <p>
+                  To avoid explicitly constructing the permutation matrices, we implement our customized CUDA operator to perform the permutation. The key idea is to implement an index mapping. Let \(\mathbf{W} \in \mathbb{R}^{m \times n}\) be the original matrix, \(\mathbf{W}_{i, :}\) be the \(i\)-th row of \(\mathbf{W}\), and \(\mathbf{W}_{:, j}\) denote the \(j\)-th column. We define two base index sets \(\mathcal{I}_m = \{1, 2, \dots, m\}\) and \(\mathcal{I}_n = \{1, 2, \dots, n\}\). Then a permutation of indices \(\pi\) is defined as \(\pi(\mathcal{I}_m) = \{\pi(1), \pi(2), \dots, \pi(m)\}\) where \(\pi : \mathcal{I} \to \mathcal{I}\) is a bijection. \(\pi^{-1}\) defines the inverse mapping, and therefore \(\pi(\pi^{-1}(i)) = i\). Let \(\mathbf{\Psi}_m \in \{0, 1\}^{m \times m}\) be defined by \(\pi_p\), and \(\mathbf{\Psi}_n \in \{0, 1\}^{n \times n}\) be defined by \(\pi_q\).
+              </p>
+
+              <p>
+                To avoid explicitly constructing permutation matrices, we implement a customized CUDA operator that performs index mapping. For a weight matrix \(\mathbf{W} \in \mathbb{R}^{m \times n}\), given permutations \(\pi_p\) and \(\pi_q\), the following equations always hold:
+              </p>
+              
+              <div class="math-block" style="text-align: center;">
+                \[
+                \begin{aligned}
+                    \mathbf{\Psi}_m \mathbf{W} \equiv \mathbf{W}' \quad &\Leftrightarrow \quad (\mathbf{W}')_{i, :} = \mathbf{W}_{\pi_p(i), :} \\
+                    \mathbf{\Psi}_m^\top \mathbf{W} \equiv \mathbf{W}' \quad &\Leftrightarrow \quad (\mathbf{W}')_{i, :} = \mathbf{W}_{\pi^{-1}_p(i), :} \\
+                    \mathbf{W} \mathbf{\Psi}_n \equiv \mathbf{W}' \quad &\Leftrightarrow \quad (\mathbf{W})_{:, j} = \mathbf{W}_{:, \pi^{-1}_q(j)} \\
+                    \mathbf{W} \mathbf{\Psi}_n^\top \equiv \mathbf{W}' \quad &\Leftrightarrow \quad (\mathbf{W}')_{:, j} = \mathbf{W}_{:, \pi_q(j)}
+                \end{aligned}
+                \]
+              </div>
+        
+              <p>
+                By accessing the weight matrix in this prescribed order, we eliminate the need for large matrix-matrix multiplications with sparse permutation matrices. Our customized CUDA operator achieves up to <strong>20&times; speedup</strong> compared to standard implementations.
+              </p>
+        
+              <h4>Permutation Reduction</h4>
+              <p>
+                In the input-centric formulation, the forward pass involves four permutations. However, we can merge two of these into the weight matrix \(\mathbf{W}\) in advance:
+              </p>
+        
+              <div class="math-block" style="text-align: center; margin: 20px 0;">
+                \[
+                \mathbf{z} = \mathbf{\Phi}_{n}\mathbf{G}_P^\top \underbrace{\mathbf{\Phi}_{n}^\top \mathbf{W} \mathbf{\Phi}_{m}}_{\text{Pre-computed}} \mathbf{G}_R^\top \mathbf{\Phi}_{m}^\top \mathbf{x}
+                \]
+              </div>
+        
+              <p>
+                Since \(\mathbf{W}\) remains fixed during the inner loop of optimizing \(\mathbf{G}_P\) and \(\mathbf{G}_R\), pre-computing the permuted \(\mathbf{W}\) significantly reduces redundant computation.
+              </p>
+
+              <p>
+                In block-stochastic POET, the orthogonal matrices \(\mathbf{G}_P\) and \(\mathbf{G}_R\) adopt a block-diagonal sparse structure:
+              </p>
+        
+              <div class="math-block" style="text-align: center;">
+                \[
+                \mathbf{G}_P = \text{Diag}(\tilde{\mathbf{G}}^1_P, \dots, \tilde{\mathbf{G}}^{\lceil n/b \rceil}_P), \quad \mathbf{G}_R = \text{Diag}(\tilde{\mathbf{G}}^1_R, \dots, \tilde{\mathbf{G}}^{\lceil m/b \rceil}_R)
+                \]
+              </div>
+        
+              <p>
+                Instead of constructing these massive sparse matrices, we observe that multiplications only occur within each block. We propose a <strong>batch-parallel strategy</strong>: each block is treated as an independent matrix in a batch, and we perform batch-wise matrix multiplications. This approach drastically reduces GPU memory consumption and improves runtime efficiency.
+              </p>
+
+              <h4>Efficient Cayley-Neumann Parameterization</h4>
+
+              <p>
+                Efficiently ensuring that each diagonal block (e.g., \(\tilde{\mathbf{G}}^i_P, \tilde{\mathbf{G}}^j_R\)) remains orthogonal during training is a major challenge. POET-X optimizes the <strong>Cayley-Neumann Parameterization (CNP)</strong> by optimizing the two steps <code>skew_symmetric</code> and <code>cayley_neumann</code>.
+              </p>
+
+              <p>
+                In the <code>skew_symmetric</code> operation, the algorithm constructs a skew-symmetric matrix \(\mathbf{Q} \in \mathbb{R}^{b \times b}\) from the stored parameters. By definition, this matrix satisfies the anti-symmetry property: \(\mathbf{Q} = -\mathbf{Q}^\top\). In POET-X, we store skew-symmetric matrices \(\mathbf{Q}\) using only their upper-triangular part. This reduces the parameter count from \(b^2\) to \(b(b-1)/2\), effectively <strong>halving the memory footprint</strong> for optimizer states and gradients. The <code>skew_symmetric</code> operation efficiently reconstructs the full matrix \(\mathbf{Q}\) from these compact parameters.
+              </p>
+
+              <p>
+                In the <code>cayley_neumann</code> operation, the algorithm computes the Cayley transform of \(\mathbf{Q}\) by re-arranging the CNP terms (for \(k=3\)), we observe a shared dependency on lower-order terms:
+              </p>
+              <div class="math-block" style="text-align: center;">
+                \[
+                \mathbf{G} \approx 2 (\mathbf{Q} + \mathbf{Q}^2 + \mathbf{Q}^2 \cdot \mathbf{Q}) + \mathbf{Q}^2 \cdot \mathbf{Q}^2 + \mathbf{I}
+                \]
+              </div>
+              <p>
+                Since all computations depend solely on \(\mathbf{Q}\) and \(\mathbf{Q}^2\), we leverage <strong>kernel fusion</strong> via Triton. The tensors \(\mathbf{Q}\) and \(\mathbf{Q}^2\) are loaded once into high-speed shared memory, where higher-order terms are computed and summed within a single kernel. This minimizes global memory (VRAM) traffic and reduces CPU launch overhead.
+              </p>
+
+              <p>
+                The same fusion strategy is applied to the backward pass. Given a function \(f(\mathbf{G}(\mathbf{Q}))\), the gradient with respect to \(\mathbf{Q}\) is derived as:
+              </p>
+        
+              <div class="math-block" style="font-size: 0.9em; overflow-x: auto; padding: 10px;">
+                \[
+                \begin{aligned}
+                &\color{#191970}{\nabla_{1} = \frac{\partial f}{\partial \mathbf{G}}}, \quad \color{#008080}{\nabla_2 =} \color{#191970}{\nabla_1} \color{#008080}{\mathbf{Q}^\top + \mathbf{Q}^\top} \color{#191970}{\nabla_1} \\
+                &\color{#C27E7E}{\nabla_3 =} \color{#191970}{\nabla_1} \color{#C27E7E}{(\mathbf{Q}^2)^\top + \mathbf{Q}^\top}\color{#008080}{\nabla_2}, \quad \color{#C2B280}{\nabla_4 =} \color{#008080}{\nabla_2} \color{#C2B280}{(\mathbf{Q}^2)^\top + (\mathbf{Q}^2)^\top}\color{#008080}{\nabla_2} \\
+                &\frac{\partial f}{\partial \mathbf{Q}} = 2\color{#191970}{\nabla_{1}} + 2\color{#008080}{\nabla_{2}} + 2\color{#C27E7E}{\nabla_{3}} + \color{#C2B280}{\nabla_{4}} \\
+                &~~~~~~~= 2 (\color{#191970}{\nabla_{1}} + \color{#008080}{\nabla_2}) + (2\mathbf{Q}^\top + (\mathbf{Q}^2)^\top)\color{#008080}{\nabla_2} + (2\color{#191970}{\nabla_{1}} + \color{#008080}{\nabla_2}) (\mathbf{Q}^2)^\top
+                \end{aligned}
+                \]
+              </div>
+        
+              <p>
+                The gradient \(\frac{\partial f}{\partial \mathbf{Q}}\) depends on \(\mathbf{Q}, \mathbf{Q}^2, \nabla_1,\) and \(\nabla_2\). By implementing this as a customized Triton operator, we gain fine-grained control over GPU memory access. Empirical evaluations show a <strong>\(3\times\)speedup</strong> over native PyTorch implementations.
+              </p>
+            </div>
+          </div>
+
+          <div class="columns is-centered has-text-centered">
+            <div class="column is-four-fifths">
+              <h2 class="title is-3">Boosting Memory-Efficiency with Checkpointing</h2>
+              <div class="content has-text-justified">
+                <p>
+                  Your paragraph text here.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div class="columns is-centered has-text-centered">
+            <div class="column is-four-fifths">
+              <h2 class="title is-3">POET-XQ: Quantized POET-X Training</h2>
+              <div class="content has-text-justified">
+                <p>
+                  Leveraging custom CUDA kernels for both forward and backward passes, POET-X readily supports <strong>quantized training</strong>. The core mechanism involves storing only the base model’s low-bit quantized weight matrices and dequantizing them <em>on the fly</em>. This ensures that high-precision weights are never stored in memory during the activation phase.
+                </p>
+          
+                <p>
+                  Consequently, <strong>POET-XQ</strong> is specifically implemented on <code>POET-X<sub>mem</sub></code>. In this configuration, intermediate activations are recomputed during the backward pass to save space. In contrast, <code>POET-X<sub>fast</sub></code> is less suitable for quantized training because it requires storing extra activation tensors, which would necessitate keeping high-precision weight matrices in memory.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
   </div>
 </section>
 
@@ -529,9 +831,9 @@
                 Under zero-mean isotropic Gaussian initialization, spectrum-preserving training and energy-preserving training can be achieved simultaneously by POET. It also partially explains why the proposed normalized Gaussian initialization achieves the best performance (Proof in the Appendix B).
               </p>
               <div class="content has-text-centered">
-                <img src="static/images/energy_spectrum.png" alt="algebraic reasoning" class="center" style="width: 70%; height: auto;">
+                <img src="static/images/throughput_scaling.png" alt="algebraic reasoning" class="center" style="width: 100%; height: auto;">
                 <p>
-                  The relationship between POET, spectrum-preserving training and energy-preserving training.
+                  Throughput (k tokens/s) across different numbers of GPUs. The solid line denotes the actual throughput, and the dashed line denotes the ideal linear scaling throughput. The ideal throughput of $k$ GPUs is defined as $T_{k, ideal}=T_{8,real}\times k /8$.
                 </p>
               </div>
             </div>
